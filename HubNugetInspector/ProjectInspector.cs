@@ -8,16 +8,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
-using System.Text;
 using System.Threading;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
 {
     class ProjectInspector
     {
-        public const string DEFAULT_OUTPUT_DIRECTORY = "blackduck";
-        public const string DEFAULT_DATETIME_FORMAT = "yyyy-MM-dd_HH-mm-ss";
         public string ProjectPath { get; set; }
         public bool Verbose { get; set; } = false;
         public string PackagesRepoUrl { get; set; }
@@ -34,8 +30,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             try
             {
                 Setup();
-                List<DependencyNode> dependencies = gatherProjectDependencies();
-                projectInfoFilePath = writeProjectInfoFile(dependencies);
+                DependencyNode projectNode = getProjectNode();
+                projectInfoFilePath = writeProjectInfoFile(projectNode);
             }
             catch (Exception ex)
             {
@@ -62,7 +58,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             if (String.IsNullOrWhiteSpace(OutputDirectory))
             {
                 string currentDirectory = Directory.GetCurrentDirectory();
-                OutputDirectory = $"{currentDirectory}{Path.DirectorySeparatorChar}{DEFAULT_OUTPUT_DIRECTORY}";
+                OutputDirectory = $"{currentDirectory}{Path.DirectorySeparatorChar}{InspectorUtil.DEFAULT_OUTPUT_DIRECTORY}";
             }
             if (String.IsNullOrWhiteSpace(ProjectName))
             {
@@ -70,18 +66,18 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             }
             if (String.IsNullOrWhiteSpace(VersionName))
             {
-                VersionName = GetProjectAssemblyVersion(projectDirectory);
+                VersionName = InspectorUtil.GetProjectAssemblyVersion(InspectorUtil.DEFAULT_DATETIME_FORMAT, projectDirectory);
             }
         }
 
-        public List<DependencyNode> gatherProjectDependencies()
+        public DependencyNode getProjectNode()
         {
 
             return null;
         }
 
 
-        public string writeProjectInfoFile(List<DependencyNode> dependencies)
+        public string writeProjectInfoFile(DependencyNode projectNode)
         {
             string outputFilePath = "";
             if (IsExcluded())
@@ -91,17 +87,13 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             else
             {
                 Console.WriteLine("Processing Project: {0}", ProjectName);
-
                 // Creates output directory if it doesn't already exist
                 Directory.CreateDirectory(OutputDirectory);
 
                 // Define output files
                 // TODO: fix file name
                 outputFilePath = $"{OutputDirectory}{Path.DirectorySeparatorChar}{ProjectName}_info.json";
-
-                //    BdioContent bdioContent = BuildBOM();
-                //    File.WriteAllText(bdioFilePath, bdioContent.ToString());
-                
+                File.WriteAllText(outputFilePath, projectNode.ToString());
                 Console.WriteLine("Finished processing project {0}", ProjectName);
             }
             return outputFilePath;
@@ -126,46 +118,12 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             }
         }
 
-       
-
-        public string CreatePath(List<string> pathSegments)
-        {
-            return String.Join(String.Format("{0}", Path.DirectorySeparatorChar), pathSegments);
-        }
-
-        private string GetProjectAssemblyVersion(string projectDirectory)
-        {
-            string version = DateTime.UtcNow.ToString(DEFAULT_DATETIME_FORMAT);
-            List<string> pathSegments = new List<string>();
-            pathSegments.Add(projectDirectory);
-            pathSegments.Add("Properties");
-            pathSegments.Add("AssemblyInfo.cs");
-            string path = CreatePath(pathSegments);
-
-            if (File.Exists(path))
-            {
-                List<string> contents = new List<string>(File.ReadAllLines(path));
-                var versionText = contents.FindAll(text => text.Contains("[assembly: AssemblyVersion"));
-                foreach (string text in versionText)
-                {
-                    int firstParen = text.IndexOf("(");
-                    int lastParen = text.LastIndexOf(")");
-                    // exclude the '(' and the " characters
-                    int start = firstParen + 2;
-                    // exclude the ')' and the " characters
-                    int end = lastParen - 1;
-                    version = text.Substring(start, (end - start));
-                }
-            }
-            return version;
-        }
-
         private string CreateProjectPackageConfigPath(string projectDirectory)
         {
             List<string> pathSegments = new List<string>();
             pathSegments.Add(projectDirectory);
             pathSegments.Add("packages.config");
-            return CreatePath(pathSegments);
+            return InspectorUtil.CreatePath(pathSegments);
         }
 
 

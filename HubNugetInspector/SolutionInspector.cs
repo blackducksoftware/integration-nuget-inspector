@@ -18,6 +18,26 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
         public bool IgnoreFailure { get; set; } = false;
 
 
+        public void Setup()
+        {
+            string solutionDirectory = Directory.GetParent(SolutionPath).FullName;
+            
+            if (String.IsNullOrWhiteSpace(OutputDirectory))
+            {
+                string currentDirectory = Directory.GetCurrentDirectory();
+                OutputDirectory = $"{currentDirectory}{Path.DirectorySeparatorChar}{InspectorUtil.DEFAULT_OUTPUT_DIRECTORY}";
+            }
+            if (String.IsNullOrWhiteSpace(ProjectName))
+            {
+                ProjectName = Path.GetFileNameWithoutExtension(SolutionPath);
+            }
+            if (String.IsNullOrWhiteSpace(VersionName))
+            {
+                VersionName = InspectorUtil.GetProjectAssemblyVersion(InspectorUtil.DEFAULT_DATETIME_FORMAT, solutionDirectory);
+            }
+        }
+
+
         public bool Execute()
         {
             bool result = true;
@@ -28,11 +48,16 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             try
             {
                 // TODO: clean up this code to generate the BDIO first then perform the deploy and checks for each project
-                // Also aggregate the results of the check policies.
+
+
                 Dictionary<string, string> projectData = ParseSolutionFile(SolutionPath);
                 Console.WriteLine("Parsed Solution File");
                 if (projectData.Count > 0)
                 {
+                    DependencyNode solutionNode = new DependencyNode();
+
+
+                    List<DependencyNode> children = new List<DependencyNode>();
                     string solutionDirectory = Path.GetDirectoryName(SolutionPath);
                     Console.WriteLine("Solution directory: {0}", solutionDirectory);
                     foreach (string key in projectData.Keys)
@@ -50,7 +75,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
                         projectPathSegments.Add(solutionDirectory);
                         projectPathSegments.Add(projectRelativePath);
 
-                        string projectPath = CreatePath(projectPathSegments);
+                        string projectPath = InspectorUtil.CreatePath(projectPathSegments);
 
                         if (String.IsNullOrWhiteSpace(ProjectName))
                         {
@@ -68,8 +93,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
                         projectInspector.ExcludedModules = ExcludedModules;
                         projectInspector.IgnoreFailure = IgnoreFailure;
                         projectInspector.Setup();
-                        projectInspector.gatherProjectDependencies();
-
+                        DependencyNode projectNode =  projectInspector.getProjectNode();
+                        children.Add(projectNode);
                         //TODO project inspector get dependencies to add to the total
 
                         //  if (String.IsNullOrWhiteSpace(VersionName))
@@ -99,6 +124,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
                           }
                           **/
                     }
+                    solutionNode.children = children;
                 }
                 else
                 {
@@ -119,11 +145,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             }
             
             return result;
-        }
-
-        public string CreatePath(List<string> pathSegments)
-        {
-            return String.Join(String.Format("{0}", Path.DirectorySeparatorChar), pathSegments);
         }
 
         private Dictionary<string, string> ParseSolutionFile(string solutionPath)

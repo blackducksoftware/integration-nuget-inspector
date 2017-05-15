@@ -4,19 +4,42 @@ using System.IO;
 using System.Linq;
 
 
-namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
+namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
-    class SolutionInspector
+    class SolutionInspector : Inspector
     {
         public string SolutionPath { get; set; }
         public bool Verbose { get; set; } = false;
         public string PackagesRepoUrl { get; set; }
-        public string ProjectName { get; set; }
+        public string SolutionName { get; set; }
         public string VersionName { get; set; }
         public string OutputDirectory { get; set; }
         public string ExcludedModules { get; set; } = "";
         public bool IgnoreFailure { get; set; } = false;
 
+
+        public string Execute()
+        {
+            string solutionInfoFilePath = "";
+            try
+            {
+                Setup();
+                DependencyNode solutionNode = GetNode();
+                solutionInfoFilePath = WriteInfoFile(solutionNode);
+            }
+            catch (Exception ex)
+            {
+                if (IgnoreFailure)
+                {
+                    Console.WriteLine("Error executing Build BOM task on project {0}, cause: {1}", SolutionName, ex);
+                }
+                else
+                {
+                    throw ex;
+                }
+            }
+            return solutionInfoFilePath;
+        }
 
         public void Setup()
         {
@@ -27,9 +50,9 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
                 string currentDirectory = Directory.GetCurrentDirectory();
                 OutputDirectory = $"{currentDirectory}{Path.DirectorySeparatorChar}{InspectorUtil.DEFAULT_OUTPUT_DIRECTORY}";
             }
-            if (String.IsNullOrWhiteSpace(ProjectName))
+            if (String.IsNullOrWhiteSpace(SolutionName))
             {
-                ProjectName = Path.GetFileNameWithoutExtension(SolutionPath);
+                SolutionName = Path.GetFileNameWithoutExtension(SolutionPath);
             }
             if (String.IsNullOrWhiteSpace(VersionName))
             {
@@ -38,91 +61,46 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
         }
 
 
-        public bool Execute()
+        public DependencyNode GetNode()
         {
-            bool result = true;
-
-          //  List<string> alreadyMergedComponents = new List<string>();
-         //   List<BdioNode> mergedComponentList = new List<BdioNode>();
-
+            DependencyNode solutionNode = new DependencyNode();
+            solutionNode.Artifact = SolutionName;
+            solutionNode.Version = VersionName;
             try
             {
                 // TODO: clean up this code to generate the BDIO first then perform the deploy and checks for each project
-
-
+                
                 Dictionary<string, string> projectData = ParseSolutionFile(SolutionPath);
                 Console.WriteLine("Parsed Solution File");
                 if (projectData.Count > 0)
                 {
-                    DependencyNode solutionNode = new DependencyNode();
-
-
                     List<DependencyNode> children = new List<DependencyNode>();
                     string solutionDirectory = Path.GetDirectoryName(SolutionPath);
                     Console.WriteLine("Solution directory: {0}", solutionDirectory);
-                    foreach (string key in projectData.Keys)
+                    foreach (string projectName in projectData.Keys)
                     {
-                        if (String.IsNullOrWhiteSpace(OutputDirectory))
-                        {
-                            OutputDirectory = $"{Directory.GetCurrentDirectory()}{Path.DirectorySeparatorChar}{key}";
-                        }
-                        else
-                        {
-                            OutputDirectory = $"{OutputDirectory}{Path.DirectorySeparatorChar}{key}";
-                        }
-                        string projectRelativePath = projectData[key];
+                        string projectRelativePath = projectData[projectName];
                         List<string> projectPathSegments = new List<string>();
                         projectPathSegments.Add(solutionDirectory);
                         projectPathSegments.Add(projectRelativePath);
 
                         string projectPath = InspectorUtil.CreatePath(projectPathSegments);
 
-                        if (String.IsNullOrWhiteSpace(ProjectName))
-                        {
-                            ProjectName = key;
-                        }
-
                         ProjectInspector projectInspector = new ProjectInspector();
                         projectInspector.ProjectPath = projectPath;
                         projectInspector.Verbose = Verbose;
                         projectInspector.PackagesRepoUrl = PackagesRepoUrl;
-                        projectInspector.ProjectName = ProjectName;
+                        projectInspector.ProjectName = projectName;
                         projectInspector.VersionName = VersionName;
-                        projectInspector.OutputDirectory = OutputDirectory;
 
                         projectInspector.ExcludedModules = ExcludedModules;
                         projectInspector.IgnoreFailure = IgnoreFailure;
                         projectInspector.Setup();
-                        DependencyNode projectNode =  projectInspector.getProjectNode();
-                        children.Add(projectNode);
-                        //TODO project inspector get dependencies to add to the total
-
-                        //  if (String.IsNullOrWhiteSpace(VersionName))
-                        //  {
-                        //      HubVersionName = originalHubVersionName;
-                        //  }
-
-                        //  bool projectResult = base.Execute();
-
-                        /**
-                          result = result && projectResult;
-
-                          if (projectResult && GenerateMergedBdio)
-                          {
-                              string bdioFilePath = $"{OutputDirectory}{Path.DirectorySeparatorChar}{HubProjectName}.jsonld";
-                              string bdio = File.ReadAllText(bdioFilePath);
-                              BdioContent bdioContent = BdioContent.Parse(bdio);
-
-                              foreach (BdioComponent component in bdioContent.Components)
-                              {
-                                  if (!alreadyMergedComponents.Contains(component.BdioExternalIdentifier.ExternalId))
-                                  {
-                                      mergedComponentList.Add(component);
-                                      alreadyMergedComponents.Add(component.BdioExternalIdentifier.ExternalId);
-                                  }
-                              }
-                          }
-                          **/
+                        DependencyNode projectNode =  projectInspector.GetNode();
+                        if (projectNode != null)
+                        {
+                            children.Add(projectNode);
+                        }
                     }
                     solutionNode.children = children;
                 }
@@ -135,7 +113,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             {
                 if (IgnoreFailure)
                 {
-                    result = true;
+                    
                     Console.WriteLine("Error executing Build BOM task. Cause: {0}", ex);
                 }
                 else
@@ -144,7 +122,22 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
                 }
             }
             
-            return result;
+            return solutionNode;
+        }
+
+        public string WriteInfoFile(DependencyNode solutionNode)
+        {
+            string outputFilePath = "";
+
+            // Creates output directory if it doesn't already exist
+            Directory.CreateDirectory(OutputDirectory);
+
+            // Define output files
+            // TODO: fix file name
+            outputFilePath = $"{OutputDirectory}{Path.DirectorySeparatorChar}{SolutionName}_info.json";
+            File.WriteAllText(outputFilePath, solutionNode.ToString());
+            
+            return outputFilePath;
         }
 
         private Dictionary<string, string> ParseSolutionFile(string solutionPath)

@@ -6,7 +6,7 @@
     <ProjectGuid>{FEE7ECE1-B25E-4F2B-8DED-93C297AB17CB}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <NoStandardLibraries>false</NoStandardLibraries>
-    <AssemblyName>ConsoleApplication</AssemblyName>
+    <AssemblyName>HubNugetInspector</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
@@ -34,7 +34,7 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
-    <RootNamespace>HubNugetInspector</RootNamespace>
+    <RootNamespace>Com.Blackducksoftware.Integration.Nuget.Inspector</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Build" />
@@ -169,6 +169,7 @@
     <Compile Include="BlackDuckInspectorException.cs" />
     <Compile Include="InspectorUtil.cs" />
     <Compile Include="DependencyNode.cs" />
+    <Compile Include="Inspector.cs" />
     <Compile Include="SolutionInspector.cs" />
     <Compile Include="ProjectInspector.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

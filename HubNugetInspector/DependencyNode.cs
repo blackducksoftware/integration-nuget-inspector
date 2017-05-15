@@ -3,13 +3,11 @@ using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 
-namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
+namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
     class DependencyNode
     {
-        public string Namespace { get; set; }
-        public string GroupId { get; set; }
-        public string ArtifactId { get; set; }
+        public string Artifact { get; set; }
         public string Version { get; set; }
         public List<DependencyNode> children { get; set; }
 

@@ -10,9 +10,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
-namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
+namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
-    class ProjectInspector
+    class ProjectInspector : Inspector
     {
         public string ProjectPath { get; set; }
         public bool Verbose { get; set; } = false;
@@ -30,8 +30,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             try
             {
                 Setup();
-                DependencyNode projectNode = getProjectNode();
-                projectInfoFilePath = writeProjectInfoFile(projectNode);
+                DependencyNode projectNode = GetNode();
+                projectInfoFilePath = WriteInfoFile(projectNode);
             }
             catch (Exception ex)
             {
@@ -70,23 +70,72 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             }
         }
 
-        public DependencyNode getProjectNode()
+        public DependencyNode GetNode()
         {
-
-            return null;
-        }
-
-
-        public string writeProjectInfoFile(DependencyNode projectNode)
-        {
-            string outputFilePath = "";
             if (IsExcluded())
             {
                 Console.WriteLine("Project {0} excluded from task", ProjectName);
+                return null;
             }
             else
             {
+                List<Lazy<INuGetResourceProvider>> providers = new List<Lazy<INuGetResourceProvider>>();
+                providers.AddRange(Repository.Provider.GetCoreV3());  // Add v3 API support
+                providers.AddRange(Repository.Provider.GetCoreV2());  // Add v2 API support
+                List<PackageMetadataResource> metadataResourceList = CreateMetaDataResourceList(providers);
+                NuGet.PackageReferenceFile configFile = new NuGet.PackageReferenceFile(PackagesConfigPath);
+                List<NuGet.PackageReference> packages = new List<NuGet.PackageReference>(configFile.GetPackageReferences());
+
                 Console.WriteLine("Processing Project: {0}", ProjectName);
+                DependencyNode projectNode = new DependencyNode();
+                projectNode.Artifact = ProjectName;
+                projectNode.Version = VersionName;
+
+                List<DependencyNode> children = new List<DependencyNode>();
+                foreach (NuGet.PackageReference packageRef in packages)
+                {
+                    // Create component node
+                    string componentName = packageRef.Id;
+                    string componentVersion = packageRef.Version.ToString();
+                    DependencyNode child = new DependencyNode();
+                    child.Artifact = componentName;
+                    child.Version = componentVersion;
+
+                    List<DependencyNode> childDependencies = new List<DependencyNode>();
+                    // Add references
+                    List<PackageDependency> packageDependencies = GetPackageDependencies(packageRef, metadataResourceList);
+                    foreach (PackageDependency packageDependency in packageDependencies)
+                    {
+                        // Create node from dependency info
+                        string dependencyName = packageDependency.Id;
+                        string dependencyVersion = GetDependencyVersion(packageDependency, packages);
+
+                        DependencyNode dependency = new DependencyNode();
+                        dependency.Artifact = dependencyName;
+                        dependency.Version = dependencyVersion;
+                        childDependencies.Add(dependency);
+                    }
+                    if (childDependencies.Count != 0)
+                    {
+                        child.children = childDependencies;
+                    }
+                    children.Add(child);
+                }
+                if (children.Count != 0)
+                {
+                    projectNode.children = children;
+                }
+                Console.WriteLine("Finished processing project {0}", ProjectName);
+                return projectNode;
+            }
+        }
+
+
+        public string WriteInfoFile(DependencyNode projectNode)
+        {
+            string outputFilePath = "";
+            if (!IsExcluded())
+            {
                 // Creates output directory if it doesn't already exist
                 Directory.CreateDirectory(OutputDirectory);
 
@@ -94,7 +143,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
                 // TODO: fix file name
                 outputFilePath = $"{OutputDirectory}{Path.DirectorySeparatorChar}{ProjectName}_info.json";
                 File.WriteAllText(outputFilePath, projectNode.ToString());
-                Console.WriteLine("Finished processing project {0}", ProjectName);
             }
             return outputFilePath;
         }
@@ -146,26 +194,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
 
         #endregion
 
-        #region Generate BDIO
-
-        public List<DependencyNode> BuildBOM()
-        {
-            // Load the packages.config file into a list of Packages
-            NuGet.PackageReferenceFile configFile = new NuGet.PackageReferenceFile(PackagesConfigPath);
-
-            // Setup NuGet API
-            // Snippets taken from https://daveaglick.com/posts/exploring-the-nuget-v3-libraries-part-2 with modifications
-            List<Lazy<INuGetResourceProvider>> providers = new List<Lazy<INuGetResourceProvider>>();
-            providers.AddRange(Repository.Provider.GetCoreV3());  // Add v3 API support
-            providers.AddRange(Repository.Provider.GetCoreV2());  // Add v2 API support
-            List<PackageMetadataResource> metadataResourceList = CreateMetaDataResourceList(providers);
-
-            // Create BDIO
-            //  BdioContent bdioContent = BuildBOMFromMetadata(new List<NuGet.PackageReference>(configFile.GetPackageReferences()), metadataResourceList);
-            //  return bdioContent;
-            return null;
-        }
-
         private List<PackageMetadataResource> CreateMetaDataResourceList(List<Lazy<INuGetResourceProvider>> providers)
         {
             List<PackageMetadataResource> list = new List<PackageMetadataResource>();
@@ -185,65 +213,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
 
             return list;
         }
-
-        public void BuildBOMFromMetadata(List<NuGet.PackageReference> packages, List<PackageMetadataResource> metadataResourceList)
-        {
-            //BdioPropertyHelper bdioPropertyHelper = new BdioPropertyHelper();
-            //BdioNodeFactory bdioNodeFactory = new BdioNodeFactory(bdioPropertyHelper);
-            //BdioContent bdio = new BdioContent();
-
-            // Create bdio bill of materials node
-           // BdioBillOfMaterials bdioBillOfMaterials = bdioNodeFactory.CreateBillOfMaterials(HubCodeLocationName, HubProjectName, HubVersionName);
-
-            // Create bdio project node
-            //string projectBdioId = bdioPropertyHelper.CreateBdioId(HubProjectName, HubVersionName);
-            //BdioExternalIdentifier projectExternalIdentifier = bdioPropertyHelper.CreateNugetExternalIdentifier(HubProjectName, HubVersionName); // Note: Could be different. Look at config file
-            //BdioProject bdioProject = bdioNodeFactory.CreateProject(HubProjectName, HubVersionName, projectBdioId, projectExternalIdentifier);
-
-            // Create relationships for every bdio node
-           // List<BdioNode> bdioComponents = new List<BdioNode>();
-           // foreach (NuGet.PackageReference packageRef in packages)
-            //{
-                // Create component node
-           //     string componentName = packageRef.Id;
-           //     string componentVersion = packageRef.Version.ToString();
-           //     string componentBdioId = bdioPropertyHelper.CreateBdioId(componentName, componentVersion);
-           //     BdioExternalIdentifier componentExternalIdentifier = bdioPropertyHelper.CreateNugetExternalIdentifier(componentName, componentVersion);
-           //     BdioComponent component = bdioNodeFactory.CreateComponent(componentName, componentVersion, componentBdioId, componentExternalIdentifier);
-
-                // Add references
-          //      List<PackageDependency> packageDependencies = GetPackageDependencies(packageRef, metadataResourceList);
-          //      foreach (PackageDependency packageDependency in packageDependencies)
-          //      {
-                    // Create node from dependency info
-          //          string dependencyName = packageDependency.Id;
-          //          string dependencyVersion = GetDependencyVersion(packageDependency, packages);
-          //          string dependencyBdioId = bdioPropertyHelper.CreateBdioId(dependencyName, dependencyVersion);
-          //          BdioExternalIdentifier dependencyExternalIdentifier = bdioPropertyHelper.CreateNugetExternalIdentifier(dependencyName, dependencyVersion);
-          //          BdioComponent dependency = bdioNodeFactory.CreateComponent(dependencyName, dependencyVersion, dependencyBdioId, dependencyExternalIdentifier);
-
-                    // Add relationship
-          //          bdioPropertyHelper.AddRelationship(component, dependency);
-          //      }
-
-           //     bdioComponents.Add(component);
-          //  }
-
-         //   bdio.BillOfMaterials = bdioBillOfMaterials;
-         //   bdio.Project = bdioProject;
-         //   bdio.Components = bdioComponents;
-
-         //   return bdio;
-        }
-
-      //  public void WriteBdio(BdioContent bdio, TextWriter textWriter)
-      //  {
-      //      BdioWriter writer = new BdioWriter(textWriter);
-      //      writer.WriteBdioNode(bdio.BillOfMaterials);
-      //      writer.WriteBdioNode(bdio.Project);
-      //      writer.WriteBdioNodes(bdio.Components);
-      //      writer.Dispose();
-      //  }
 
         private string GetDependencyVersion(PackageDependency packageDependency, List<NuGet.PackageReference> packages)
         {
@@ -298,7 +267,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             return majorMatch && minorMatch;
         }
 
-        #endregion
     }
 
     // For the NuGet API

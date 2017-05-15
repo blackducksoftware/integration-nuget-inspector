@@ -5,21 +5,23 @@ using System.Collections.Specialized;
 using System.Configuration;
 using System.IO;
 
-namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
+namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
     class Application
     {
         public const string PARAM_KEY_APP_SETTINGS_FILE = "app_settings_file";
-        public const string PARAM_KEY_SOLUTION = "solution_path";
+        public const string PARAM_KEY_TARGET = "target_path";
+        public const string PARAM_KEY_PACKAGE_REPO_URL = "packages_repo_url";
         public const string PARAM_KEY_OUTPUT_DIRECTORY = "output_directory";
         public const string PARAM_KEY_EXCLUDED_MODULES = "excluded_modules";
         public const string PARAM_KEY_IGNORE_FAILURE = "ignore_failure";
 
-        //private ProjectGenerator ProjectGenerator;
         private string[] Args;
         private Dictionary<string, string> PropertyMap;
         private Dictionary<string, string> CommandLinePropertyMap;
         private Dictionary<string, string> AppSettingsMap;
+
+        private Inspector Inspector;
 
         private bool ShowHelp = false;
         private bool Verbose = false;
@@ -45,25 +47,22 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             }
         }
 
-        public bool Execute()
+        public void Execute()
         {
             try
             {
                 Configure();
                 if (!ShowHelp)
                 {
-                    return true;//ProjectGenerator.Execute();
+                    string fileOutputPath = Inspector.Execute();
+                    Console.WriteLine("Info file created at {0}", fileOutputPath);
                 }
-                else
-                {
-                    return false;
-                }
+               
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine("Error occurred executing command: {0}", ex.Message);
                 Environment.Exit(-1);
-                return false;
             }
         }
 
@@ -72,7 +71,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             PopulateParameterMap();
             OptionSet commandOptions = CreateOptionSet();
             ParseCommandLine(commandOptions);
-            string usageMessage = "Usage is BuildBom.exe [OPTIONS]";
+            string usageMessage = "Usage is HubNugetInspector.exe [OPTIONS]";
 
             if (ShowHelp)
             {
@@ -80,7 +79,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
                 ShowHelpMessage(usageMessage, commandOptions);
             }
 
-            ConfigureGenerator(commandOptions);
+            ConfigureInspector(commandOptions);
         }
 
         private void LogProperties()
@@ -117,11 +116,12 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
         {
             OptionSet optionSet = new OptionSet();
             AddAppSettingsFileMenuOption(optionSet, PARAM_KEY_APP_SETTINGS_FILE, "The file path for the application settings that overrides all settings.");
-            AddMenuOption(optionSet, PARAM_KEY_SOLUTION, "The path to the solution file to find dependencies");
+            AddMenuOption(optionSet, PARAM_KEY_TARGET, "The path to the solution or project file to find dependencies");
             AddMenuOption(optionSet, PARAM_KEY_OUTPUT_DIRECTORY, "The directory path to output the BDIO files.");
             AddMenuOption(optionSet, PARAM_KEY_EXCLUDED_MODULES, "The names of the projects in a solution to exclude from BDIO generation.");
             AddMenuOption(optionSet, PARAM_KEY_IGNORE_FAILURE, "If true log the error but do not throw an exception.");
-         
+            AddMenuOption(optionSet, PARAM_KEY_PACKAGE_REPO_URL, "The URL of the NuGet repository to get the packages.");
+
             optionSet.Add("?|h|help", "Display the information on how to use this executable.", value => ShowHelp = value != null);
             optionSet.Add("v|verbose", "Display more messages when the executable runs.", value => Verbose = value != null);
 
@@ -157,7 +157,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             }
             catch (OptionException)
             {
-                ShowHelpMessage("Error processing command line, usage is: buildBom.exe [OPTIONS]", commandOptions);
+                ShowHelpMessage("Error processing command line, usage is: HubNugetInspector.exe [OPTIONS]", commandOptions);
             }
         }
 
@@ -185,43 +185,38 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
             }
         }
 
-        private void ConfigureGenerator(OptionSet commandOptions)
+        private void ConfigureInspector(OptionSet commandOptions)
         {
             ResolveProperties();
-            /**
-            ProjectGenerator = CreateGenerator();
 
-            if (ProjectGenerator == null)
+            Inspector = CreateInspector();
+
+            if (Inspector == null)
             {
-                ShowHelpMessage("Couldn't find a solution or project. Usage buildBom.exe [OPTIONS]", commandOptions);
+                ShowHelpMessage("Couldn't find a solution or project. Usage HubNugetInspector.exe [OPTIONS]", commandOptions);
             }
-            **/
+   
 
             if (PropertyMap.ContainsKey(PARAM_KEY_OUTPUT_DIRECTORY))
             {
                 if (String.IsNullOrWhiteSpace(PropertyMap[PARAM_KEY_OUTPUT_DIRECTORY]))
                 {
                     string currentDirectory = Directory.GetCurrentDirectory();
-                    string defaultOutputDirectory = $"{currentDirectory}{Path.DirectorySeparatorChar}"; // {ProjectGenerator.DEFAULT_OUTPUT_DIRECTORY}";
+                    string defaultOutputDirectory = $"{currentDirectory}{Path.DirectorySeparatorChar}{InspectorUtil.DEFAULT_OUTPUT_DIRECTORY}";
                     PropertyMap[PARAM_KEY_OUTPUT_DIRECTORY] = defaultOutputDirectory;
                 }
             }
-
             LogProperties();
-
-          //  ProjectGenerator.Verbose = Verbose;
-          //  ProjectGenerator.PackagesRepoUrl = GetPropertyValue(PARAM_KEY_PACKAGE_REPO_URL);
-          // ProjectGenerator.OutputDirectory = GetPropertyValue(PARAM_KEY_OUTPUT_DIRECTORY);
-          //  ProjectGenerator.ExcludedModules = GetPropertyValue(PARAM_KEY_EXCLUDED_MODULES);
-          //  ProjectGenerator.IgnoreFailure = Convert.ToBoolean(GetPropertyValue(PARAM_KEY_IGNORE_FAILURE, "false"));
-           
         }
 
-        /**
-        private ProjectGenerator CreateGenerator()
+       
+        private Inspector CreateInspector()
         {
-            string solutionPath = GetPropertyValue(PARAM_KEY_SOLUTION);
-            if (string.IsNullOrWhiteSpace(solutionPath))
+            Inspector inspector = null;
+            SolutionInspector solutionInspector = null;
+            ProjectInspector projectInspector = null;
+            string targetPath = GetPropertyValue(PARAM_KEY_TARGET);
+            if (string.IsNullOrWhiteSpace(targetPath))
             {
                 Console.WriteLine("Searching for a solution file to process...");
                 // search for solution
@@ -230,11 +225,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
 
                 if (solutionPaths != null && solutionPaths.Length >= 1)
                 {
-                    SolutionGenerator solutionGenerator = new SolutionGenerator();
-                    solutionGenerator.SolutionPath = solutionPaths[0];
-                    solutionGenerator.GenerateMergedBdio = Convert.ToBoolean(GetPropertyValue(PARAM_KEY_HUB_CREATE_MERGED_BDIO, "false"));
-                    PropertyMap[PARAM_KEY_SOLUTION] = solutionPaths[0];
-                    return solutionGenerator;
+                    solutionInspector = new SolutionInspector();
+                    solutionInspector.SolutionPath = solutionPaths[0];
                 }
                 else
                 {
@@ -244,34 +236,47 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.HubNugetInspector
                     {
                         string projectPath = projectPaths[0];
                         Console.WriteLine("Found project {0}", projectPath);
-                        ProjectGenerator projectGenerator = new ProjectGenerator();
-                        projectGenerator.ProjectPath = projectPath;
-                        return projectGenerator;
-                    }
-                    else
-                    {
-                        return null;
+                         projectInspector = new ProjectInspector();
+                        projectInspector.ProjectPath = projectPath;
                     }
                 }
             }
             else
             {
-                if (solutionPath.Contains(".sln"))
+                if (targetPath.Contains(".sln"))
                 {
-                    SolutionGenerator solutionGenerator = new SolutionGenerator();
-                    solutionGenerator.SolutionPath = solutionPath;
-
-                    return solutionGenerator;
+                    solutionInspector = new SolutionInspector();
+                    solutionInspector.SolutionPath = targetPath;
                 }
                 else
                 {
-                    ProjectGenerator projectGenerator = new ProjectGenerator();
-                    projectGenerator.ProjectPath = solutionPath;
-                    return projectGenerator;
+                    projectInspector = new ProjectInspector();
+                    projectInspector.ProjectPath = targetPath;
                 }
             }
+
+            if (solutionInspector != null)
+            {
+                solutionInspector.Verbose = Verbose;
+                solutionInspector.PackagesRepoUrl = GetPropertyValue(PARAM_KEY_PACKAGE_REPO_URL);
+                solutionInspector.OutputDirectory = GetPropertyValue(PARAM_KEY_OUTPUT_DIRECTORY);
+                solutionInspector.ExcludedModules = GetPropertyValue(PARAM_KEY_EXCLUDED_MODULES);
+                solutionInspector.IgnoreFailure = Convert.ToBoolean(GetPropertyValue(PARAM_KEY_IGNORE_FAILURE, "false"));
+                inspector = solutionInspector;
+            }
+            else if (projectInspector != null)
+            {
+                projectInspector.Verbose = Verbose;
+                projectInspector.PackagesRepoUrl = GetPropertyValue(PARAM_KEY_PACKAGE_REPO_URL);
+                projectInspector.OutputDirectory = GetPropertyValue(PARAM_KEY_OUTPUT_DIRECTORY);
+                projectInspector.ExcludedModules = GetPropertyValue(PARAM_KEY_EXCLUDED_MODULES);
+                projectInspector.IgnoreFailure = Convert.ToBoolean(GetPropertyValue(PARAM_KEY_IGNORE_FAILURE, "false"));
+                inspector = projectInspector;
+            }
+
+            return inspector;
         }
-    **/
+   
 
         private string GetPropertyValue(string key, string defaultValue = "")
         {

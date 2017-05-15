@@ -43,18 +43,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             {
                 Name = Path.GetFileNameWithoutExtension(TargetPath);
             }
-            if (String.IsNullOrWhiteSpace(VersionName))
-            {
-                if (Directory.Exists(TargetPath))
-                {
-                    VersionName = InspectorUtil.GetProjectAssemblyVersion(InspectorUtil.DEFAULT_DATETIME_FORMAT, TargetPath);
-                }
-                else
-                {
-                    string solutionDirectory = Directory.GetParent(TargetPath).FullName;
-                    VersionName = InspectorUtil.GetProjectAssemblyVersion(InspectorUtil.DEFAULT_DATETIME_FORMAT, solutionDirectory);
-                }
-            }
         }
 
 
@@ -62,7 +50,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         {
             DependencyNode solutionNode = new DependencyNode();
             solutionNode.Artifact = Name;
-            solutionNode.Version = VersionName;
             try
             {
                 Dictionary<string, string> projectData = ParseSolutionFile(TargetPath);

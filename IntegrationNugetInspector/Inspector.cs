@@ -15,7 +15,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public string ExcludedModules { get; set; } = "";
         public bool IgnoreFailure { get; set; } = false;
         public string Name { get; set; }
-        public string VersionName { get; set; }
 
 
         abstract public string Execute();

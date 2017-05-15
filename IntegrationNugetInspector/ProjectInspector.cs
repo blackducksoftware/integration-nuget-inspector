@@ -14,6 +14,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
     class ProjectInspector : Inspector
     {
+        public string VersionName { get; set; }
         public string PackagesConfigPath { get; set; }
 
         override public string Execute()

@@ -18,11 +18,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             pathSegments.Add("Properties");
             pathSegments.Add("AssemblyInfo.cs");
             string path = CreatePath(pathSegments);
-
             if (File.Exists(path))
             {
                 List<string> contents = new List<string>(File.ReadAllLines(path));
-                var versionText = contents.FindAll(text => text.Contains("[assembly: AssemblyVersion"));
+                var versionText = contents.FindAll(text => text.Contains("[assembly: AssemblyFileVersion"));
                 foreach (string text in versionText)
                 {
                     int firstParen = text.IndexOf("(");

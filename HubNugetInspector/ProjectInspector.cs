@@ -14,17 +14,9 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
     class ProjectInspector : Inspector
     {
-        public string ProjectPath { get; set; }
-        public bool Verbose { get; set; } = false;
-        public string PackagesRepoUrl { get; set; }
-        public string ProjectName { get; set; }
-        public string VersionName { get; set; }
-        public string OutputDirectory { get; set; }
-        public string ExcludedModules { get; set; } = "";
-        public bool IgnoreFailure { get; set; } = false;
         public string PackagesConfigPath { get; set; }
 
-        public string Execute()
+        override public string Execute()
         {
             string projectInfoFilePath = "";
             try
@@ -37,7 +29,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             {
                 if (IgnoreFailure)
                 {
-                    Console.WriteLine("Error executing Build BOM task on project {0}, cause: {1}", ProjectName, ex);
+                    Console.WriteLine("Error executing Build BOM task on project {0}, cause: {1}", Name, ex);
                 }
                 else
                 {
@@ -47,10 +39,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             return projectInfoFilePath;
         }
 
-        
-        public void Setup()
+
+        override public void Setup()
         {
-            string projectDirectory = Directory.GetParent(ProjectPath).FullName;
+            string projectDirectory = Directory.GetParent(TargetPath).FullName;
             if (String.IsNullOrWhiteSpace(PackagesConfigPath))
             {
                 PackagesConfigPath = CreateProjectPackageConfigPath(projectDirectory);
@@ -60,9 +52,9 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 string currentDirectory = Directory.GetCurrentDirectory();
                 OutputDirectory = $"{currentDirectory}{Path.DirectorySeparatorChar}{InspectorUtil.DEFAULT_OUTPUT_DIRECTORY}";
             }
-            if (String.IsNullOrWhiteSpace(ProjectName))
+            if (String.IsNullOrWhiteSpace(Name))
             {
-               ProjectName = Path.GetFileNameWithoutExtension(ProjectPath);
+               Name = Path.GetFileNameWithoutExtension(TargetPath);
             }
             if (String.IsNullOrWhiteSpace(VersionName))
             {
@@ -70,11 +62,11 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
         }
 
-        public DependencyNode GetNode()
+        override public DependencyNode GetNode()
         {
             if (IsExcluded())
             {
-                Console.WriteLine("Project {0} excluded from task", ProjectName);
+                Console.WriteLine("Project {0} excluded from task", Name);
                 return null;
             }
             else
@@ -86,9 +78,9 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 NuGet.PackageReferenceFile configFile = new NuGet.PackageReferenceFile(PackagesConfigPath);
                 List<NuGet.PackageReference> packages = new List<NuGet.PackageReference>(configFile.GetPackageReferences());
 
-                Console.WriteLine("Processing Project: {0}", ProjectName);
+                Console.WriteLine("Processing Project: {0}", Name);
                 DependencyNode projectNode = new DependencyNode();
-                projectNode.Artifact = ProjectName;
+                projectNode.Artifact = Name;
                 projectNode.Version = VersionName;
 
                 List<DependencyNode> children = new List<DependencyNode>();
@@ -117,21 +109,21 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     }
                     if (childDependencies.Count != 0)
                     {
-                        child.children = childDependencies;
+                        child.Children = childDependencies;
                     }
                     children.Add(child);
                 }
                 if (children.Count != 0)
                 {
-                    projectNode.children = children;
+                    projectNode.Children = children;
                 }
-                Console.WriteLine("Finished processing project {0}", ProjectName);
+                Console.WriteLine("Finished processing project {0}", Name);
                 return projectNode;
             }
         }
 
 
-        public string WriteInfoFile(DependencyNode projectNode)
+        override public string WriteInfoFile(DependencyNode projectNode)
         {
             string outputFilePath = "";
             if (!IsExcluded())
@@ -141,7 +133,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
                 // Define output files
                 // TODO: fix file name
-                outputFilePath = $"{OutputDirectory}{Path.DirectorySeparatorChar}{ProjectName}_info.json";
+                outputFilePath = $"{OutputDirectory}{Path.DirectorySeparatorChar}{Name}_dependency_node.json";
                 File.WriteAllText(outputFilePath, projectNode.ToString());
             }
             return outputFilePath;
@@ -162,7 +154,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 {
                     excludedSet.Add(projectName.Trim());
                 }
-                return excludedSet.Contains(ProjectName.Trim());
+                return excludedSet.Contains(Name.Trim());
             }
         }
 
@@ -173,26 +165,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             pathSegments.Add("packages.config");
             return InspectorUtil.CreatePath(pathSegments);
         }
-
-
-        #region Make Flat Dependency List
-
-        public List<string> CreateFlatList()
-        {
-            // Load the packages.config file into a list of Packages
-            NuGet.PackageReferenceFile configFile = new NuGet.PackageReferenceFile(PackagesConfigPath);
-            List<NuGet.PackageReference> packages = new List<NuGet.PackageReference>(configFile.GetPackageReferences());
-
-            List<string> externalIds = new List<string>();
-            foreach (NuGet.PackageReference packageReference in packages)
-            {
-                string externalId = "";// bdioPropertyHelper.CreateNugetExternalId(packageReference.Id, packageReference.Version.ToString());
-                externalIds.Add(externalId);
-            }
-            return externalIds;
-        }
-
-        #endregion
 
         private List<PackageMetadataResource> CreateMetaDataResourceList(List<Lazy<INuGetResourceProvider>> providers)
         {

@@ -57,7 +57,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     string fileOutputPath = Inspector.Execute();
                     Console.WriteLine("Info file created at {0}", fileOutputPath);
                 }
-               
+
             }
             catch (Exception ex)
             {
@@ -71,7 +71,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             PopulateParameterMap();
             OptionSet commandOptions = CreateOptionSet();
             ParseCommandLine(commandOptions);
-            string usageMessage = "Usage is HubNugetInspector.exe [OPTIONS]";
+            string usageMessage = "Usage is IntegrationNugetInspector.exe [OPTIONS]";
 
             if (ShowHelp)
             {
@@ -117,8 +117,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             OptionSet optionSet = new OptionSet();
             AddAppSettingsFileMenuOption(optionSet, PARAM_KEY_APP_SETTINGS_FILE, "The file path for the application settings that overrides all settings.");
             AddMenuOption(optionSet, PARAM_KEY_TARGET, "The path to the solution or project file to find dependencies");
-            AddMenuOption(optionSet, PARAM_KEY_OUTPUT_DIRECTORY, "The directory path to output the BDIO files.");
-            AddMenuOption(optionSet, PARAM_KEY_EXCLUDED_MODULES, "The names of the projects in a solution to exclude from BDIO generation.");
+            AddMenuOption(optionSet, PARAM_KEY_OUTPUT_DIRECTORY, "The directory path to output the dependency node files.");
+            AddMenuOption(optionSet, PARAM_KEY_EXCLUDED_MODULES, "The names of the projects in a solution to exclude from dependency node generation.");
             AddMenuOption(optionSet, PARAM_KEY_IGNORE_FAILURE, "If true log the error but do not throw an exception.");
             AddMenuOption(optionSet, PARAM_KEY_PACKAGE_REPO_URL, "The URL of the NuGet repository to get the packages.");
 
@@ -157,7 +157,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
             catch (OptionException)
             {
-                ShowHelpMessage("Error processing command line, usage is: HubNugetInspector.exe [OPTIONS]", commandOptions);
+                ShowHelpMessage("Error processing command line, usage is: IntegrationNugetInspector.exe [OPTIONS]", commandOptions);
             }
         }
 
@@ -193,9 +193,9 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
             if (Inspector == null)
             {
-                ShowHelpMessage("Couldn't find a solution or project. Usage HubNugetInspector.exe [OPTIONS]", commandOptions);
+                ShowHelpMessage("Couldn't find a solution or project. Usage IntegrationNugetInspector.exe [OPTIONS]", commandOptions);
             }
-   
+
 
             if (PropertyMap.ContainsKey(PARAM_KEY_OUTPUT_DIRECTORY))
             {
@@ -209,74 +209,70 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             LogProperties();
         }
 
-       
+
         private Inspector CreateInspector()
         {
             Inspector inspector = null;
-            SolutionInspector solutionInspector = null;
-            ProjectInspector projectInspector = null;
             string targetPath = GetPropertyValue(PARAM_KEY_TARGET);
+
             if (string.IsNullOrWhiteSpace(targetPath))
+            {
+                targetPath = Directory.GetCurrentDirectory();
+            }
+
+
+            if (Directory.Exists(targetPath))
             {
                 Console.WriteLine("Searching for a solution file to process...");
                 // search for solution
-                string currentDirectory = Directory.GetCurrentDirectory();
-                string[] solutionPaths = Directory.GetFiles(currentDirectory, "*.sln");
+                string[] solutionPaths = Directory.GetFiles(targetPath, "*.sln");
 
                 if (solutionPaths != null && solutionPaths.Length >= 1)
                 {
-                    solutionInspector = new SolutionInspector();
-                    solutionInspector.SolutionPath = solutionPaths[0];
+                    inspector = new SolutionInspector();
+                    inspector.TargetPath = solutionPaths[0];
                 }
                 else
                 {
                     Console.WriteLine("No Solution file found.  Searching for a project file...");
-                    string[] projectPaths = Directory.GetFiles(currentDirectory, "*.csproj");
+                    string[] projectPaths = Directory.GetFiles(targetPath, "*.csproj");
                     if (projectPaths != null && projectPaths.Length > 0)
                     {
                         string projectPath = projectPaths[0];
                         Console.WriteLine("Found project {0}", projectPath);
-                         projectInspector = new ProjectInspector();
-                        projectInspector.ProjectPath = projectPath;
+                        inspector = new ProjectInspector();
+                        inspector.TargetPath = projectPath;
                     }
                 }
             }
-            else
+            else if (File.Exists(targetPath))
             {
                 if (targetPath.Contains(".sln"))
                 {
-                    solutionInspector = new SolutionInspector();
-                    solutionInspector.SolutionPath = targetPath;
+                    inspector = new SolutionInspector();
+                    inspector.TargetPath = targetPath;
                 }
                 else
                 {
-                    projectInspector = new ProjectInspector();
-                    projectInspector.ProjectPath = targetPath;
+                    inspector = new ProjectInspector();
+                    inspector.TargetPath = targetPath;
                 }
             }
 
-            if (solutionInspector != null)
+
+            if (inspector != null)
             {
-                solutionInspector.Verbose = Verbose;
-                solutionInspector.PackagesRepoUrl = GetPropertyValue(PARAM_KEY_PACKAGE_REPO_URL);
-                solutionInspector.OutputDirectory = GetPropertyValue(PARAM_KEY_OUTPUT_DIRECTORY);
-                solutionInspector.ExcludedModules = GetPropertyValue(PARAM_KEY_EXCLUDED_MODULES);
-                solutionInspector.IgnoreFailure = Convert.ToBoolean(GetPropertyValue(PARAM_KEY_IGNORE_FAILURE, "false"));
-                inspector = solutionInspector;
-            }
-            else if (projectInspector != null)
-            {
-                projectInspector.Verbose = Verbose;
-                projectInspector.PackagesRepoUrl = GetPropertyValue(PARAM_KEY_PACKAGE_REPO_URL);
-                projectInspector.OutputDirectory = GetPropertyValue(PARAM_KEY_OUTPUT_DIRECTORY);
-                projectInspector.ExcludedModules = GetPropertyValue(PARAM_KEY_EXCLUDED_MODULES);
-                projectInspector.IgnoreFailure = Convert.ToBoolean(GetPropertyValue(PARAM_KEY_IGNORE_FAILURE, "false"));
-                inspector = projectInspector;
+                inspector.Verbose = Verbose;
+                inspector.PackagesRepoUrl = GetPropertyValue(PARAM_KEY_PACKAGE_REPO_URL);
+                inspector.OutputDirectory = GetPropertyValue(PARAM_KEY_OUTPUT_DIRECTORY);
+                inspector.ExcludedModules = GetPropertyValue(PARAM_KEY_EXCLUDED_MODULES);
+                inspector.IgnoreFailure = Convert.ToBoolean(GetPropertyValue(PARAM_KEY_IGNORE_FAILURE, "false"));
+
             }
 
             return inspector;
         }
-   
+
 
         private string GetPropertyValue(string key, string defaultValue = "")
         {

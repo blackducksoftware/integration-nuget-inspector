@@ -9,7 +9,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
     {
         public string Artifact { get; set; }
         public string Version { get; set; }
-        public List<DependencyNode> children { get; set; }
+        public List<DependencyNode> Children { get; set; }
 
         public override string ToString()
         {
@@ -22,12 +22,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             using (JsonWriter writer = new JsonTextWriter(stringWriter))
             {
                 writer.Formatting = Newtonsoft.Json.Formatting.Indented;
-                writer.WriteStartArray();
-                foreach (DependencyNode child in children)
-                {
-                    serializer.Serialize(writer, child);
-                }
-                writer.WriteEndArray();
+                serializer.Serialize(writer, this);
             }
             return stringBuilder.ToString();
         }

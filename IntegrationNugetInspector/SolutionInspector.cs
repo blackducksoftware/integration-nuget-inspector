@@ -41,6 +41,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.ToString());
                 if (IgnoreFailure)
                 {
                     Console.WriteLine("Error executing Build BOM task on project {0}, cause: {1}", Name, ex);
@@ -77,7 +78,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 Console.WriteLine("Parsed Solution File");
                 if (projectData.Count > 0)
                 {
-                    List<DependencyNode> children = new List<DependencyNode>();
+                    HashSet<DependencyNode> children = new HashSet<DependencyNode>();
                     string solutionDirectory = Path.GetDirectoryName(TargetPath);
                     Console.WriteLine("Solution directory: {0}", solutionDirectory);
                     foreach (string projectName in projectData.Keys)
@@ -113,6 +114,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.ToString());
                 if (IgnoreFailure)
                 {
                     

@@ -105,7 +105,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 projectNode.Artifact = Name;
                 projectNode.Version = VersionName;
 
-                List<DependencyNode> children = new List<DependencyNode>();
+                HashSet<DependencyNode> children = new HashSet<DependencyNode>();
                 foreach (NuGet.PackageReference packageRef in packages)
                 {
                     // Create component node
@@ -115,7 +115,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     child.Artifact = componentName;
                     child.Version = componentVersion;
 
-                    List<DependencyNode> childDependencies = new List<DependencyNode>();
+                    HashSet<DependencyNode> childDependencies = new HashSet<DependencyNode>();
                     // Add references
                     List<PackageDependency> packageDependencies = GetPackageDependencies(packageRef, metadataResourceList);
                     foreach (PackageDependency packageDependency in packageDependencies)

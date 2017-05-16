@@ -30,7 +30,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
     {
         public string Artifact { get; set; }
         public string Version { get; set; }
-        public List<DependencyNode> Children { get; set; }
+        public HashSet<DependencyNode> Children { get; set; }
 
         public override string ToString()
         {
@@ -48,7 +48,80 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             return stringBuilder.ToString();
         }
 
-       
-    
-}
+
+        public override int GetHashCode()
+        {
+            int prime = 31;
+            int result = 1;
+            result = result * prime + ((Artifact == null) ? 0 : Artifact.GetHashCode());
+            result = result * prime + ((Version == null) ? 0 : Version.GetHashCode());
+            if (Children != null)
+            {
+                foreach (DependencyNode child in Children)
+                {
+                    result = result * prime + ((child == null) ? 0 : child.GetHashCode());
+                }
+            }
+            return result;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null || this.GetType() != obj.GetType())
+            {
+                return false;
+            }
+            else
+            {
+                DependencyNode other = (DependencyNode) obj;
+                if(Artifact == null)
+                {
+                    if(other.Artifact != null)
+                    {
+                        return false;
+                    }
+                }
+                else if (!Artifact.Equals(other.Artifact))
+                {
+                    return false;
+                }
+
+                if (Version == null)
+                {
+                    if (other.Version != null)
+                    {
+                        return false;
+                    }
+                }
+                else if(!Version.Equals(other.Version))
+                {
+                    return false;
+                }
+
+                if (Children == null)
+                {
+                    if (other.Children != null)
+                    {
+                        return false;
+                    }
+                }
+                else if (Children.Count != other.Children.Count)
+                {
+                    return false;
+                }
+                else
+                {
+                    foreach (DependencyNode child in Children)
+                    {
+                        if (!other.Children.Contains(child))
+                        {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+
+    }
 }

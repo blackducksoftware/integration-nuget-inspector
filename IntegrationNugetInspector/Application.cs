@@ -64,7 +64,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine(ex.Message);
+                Console.Error.WriteLine(ex.ToString());
             }
         }
 
@@ -82,7 +82,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine("Error occurred executing command: {0}", ex.Message);
+                Console.Error.WriteLine("Error occurred executing command: {0}", ex.ToString());
                 Environment.Exit(-1);
             }
         }

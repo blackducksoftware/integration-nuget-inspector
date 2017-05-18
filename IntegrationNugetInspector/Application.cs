@@ -256,7 +256,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 else
                 {
                     Console.WriteLine("No Solution file found.  Searching for a project file...");
-                    string[] projectPaths = Directory.GetFiles(targetPath, "*.csproj");
+                    string[] projectPaths = Directory.GetFiles(targetPath, "*.*proj");
                     if (projectPaths != null && projectPaths.Length > 0)
                     {
                         string projectPath = projectPaths[0];

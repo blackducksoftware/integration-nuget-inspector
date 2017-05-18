@@ -48,7 +48,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             return stringBuilder.ToString();
         }
 
-
         public override int GetHashCode()
         {
             int prime = 31;

@@ -19,6 +19,8 @@
  * specific language governing permissions and limitations
  * under the License.
  *******************************************************************************/
+using Microsoft.Build.Evaluation;
+using Microsoft.Build.Exceptions;
 using NuGet.Configuration;
 using NuGet.Packaging;
 using NuGet.Packaging.Core;
@@ -29,7 +31,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
+using System.Xml;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
@@ -49,15 +53,16 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
             catch (Exception ex)
             {
+                Console.WriteLine("{0}", ex.ToString());
                 if (IgnoreFailure)
                 {
-                    Console.WriteLine("Error executing Build BOM task on project {0}, cause: {1}", Name, ex);
+                    Console.WriteLine("Error collecting dependencyinformation on project {0}, cause: {1}", Name, ex);
                 }
                 else
                 {
                     throw ex;
                 }
-            } 
+            }
             return projectInfoFilePath;
         }
 
@@ -76,11 +81,11 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
             if (String.IsNullOrWhiteSpace(Name))
             {
-               Name = Path.GetFileNameWithoutExtension(TargetPath);
+                Name = Path.GetFileNameWithoutExtension(TargetPath);
             }
             if (String.IsNullOrWhiteSpace(VersionName))
             {
-                VersionName = InspectorUtil.GetProjectAssemblyVersion(InspectorUtil.DEFAULT_DATETIME_FORMAT, projectDirectory);
+                VersionName = InspectorUtil.GetProjectAssemblyVersion(projectDirectory);
             }
         }
 
@@ -97,47 +102,143 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 providers.AddRange(Repository.Provider.GetCoreV3());  // Add v3 API support
                 providers.AddRange(Repository.Provider.GetCoreV2());  // Add v2 API support
                 List<PackageMetadataResource> metadataResourceList = CreateMetaDataResourceList(providers);
-                NuGet.PackageReferenceFile configFile = new NuGet.PackageReferenceFile(PackagesConfigPath);
-                List<NuGet.PackageReference> packages = new List<NuGet.PackageReference>(configFile.GetPackageReferences());
-
                 Console.WriteLine("Processing Project: {0}", Name);
                 DependencyNode projectNode = new DependencyNode();
                 projectNode.Artifact = Name;
                 projectNode.Version = VersionName;
-
                 HashSet<DependencyNode> children = new HashSet<DependencyNode>();
-                foreach (NuGet.PackageReference packageRef in packages)
+                if (String.IsNullOrWhiteSpace(PackagesConfigPath) || !File.Exists(PackagesConfigPath))
                 {
-                    // Create component node
-                    string componentName = packageRef.Id;
-                    string componentVersion = packageRef.Version.ToString();
-                    DependencyNode child = new DependencyNode();
-                    child.Artifact = componentName;
-                    child.Version = componentVersion;
-
-                    HashSet<DependencyNode> childDependencies = new HashSet<DependencyNode>();
-                    // Add references
-                    List<PackageDependency> packageDependencies = GetPackageDependencies(packageRef, metadataResourceList);
-                    foreach (PackageDependency packageDependency in packageDependencies)
+                    try
                     {
-                        // Create node from dependency info
-                        string dependencyName = packageDependency.Id;
-                        string dependencyVersion = GetDependencyVersion(packageDependency, packages);
+                        Project proj = new Project(TargetPath);
+                        foreach (ProjectItem reference in proj.GetItems("Reference"))
+                        {
+                            if (reference.Xml != null && !String.IsNullOrWhiteSpace(reference.Xml.Include) && reference.Xml.Include.Contains("Version"))
+                            {
+                                string packageInfo = reference.Xml.Include;
 
-                        DependencyNode dependency = new DependencyNode();
-                        dependency.Artifact = dependencyName;
-                        dependency.Version = dependencyVersion;
-                        childDependencies.Add(dependency);
+                                DependencyNode childNode = new DependencyNode();
+                                childNode.Artifact = packageInfo.Substring(0, packageInfo.IndexOf(","));
+                                string version = packageInfo.Substring(packageInfo.IndexOf("Version=") + 8);
+                                version = version.Substring(0, version.IndexOf(","));
+                                version = version.Substring(0, version.LastIndexOf("."));
+                                childNode.Version = version;
+                                children.Add(childNode);
+                            }
+                        }
                     }
-                    if (childDependencies.Count != 0)
+                    catch (InvalidProjectFileException e)
                     {
-                        child.Children = childDependencies;
+                        // .NET core default version
+                        projectNode.Version = "1.0.0";
+
+                        XmlDocument doc = new XmlDocument();
+                        doc.Load(TargetPath);
+
+                        XmlNodeList versionNodes = doc.GetElementsByTagName("Version");
+                        if (versionNodes != null && versionNodes.Count > 0)
+                        {
+                            foreach (XmlNode version in versionNodes)
+                            {
+                                if (version.NodeType != XmlNodeType.Comment)
+                                {
+                                    projectNode.Version = version.InnerText;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            string prefix = "1.0.0";
+                            string suffix = "";
+                            XmlNodeList prefixNodes = doc.GetElementsByTagName("VersionPrefix");
+                            if (prefixNodes != null && prefixNodes.Count > 0)
+                            {
+                                foreach (XmlNode prefixNode in prefixNodes)
+                                {
+                                    if (prefixNode.NodeType != XmlNodeType.Comment)
+                                    {
+                                        prefix = prefixNode.InnerText;
+                                    }
+                                }
+                            }
+                            XmlNodeList suffixNodes = doc.GetElementsByTagName("VersionSuffix");
+                            if (suffixNodes != null && suffixNodes.Count > 0)
+                            {
+                                foreach (XmlNode suffixNode in suffixNodes)
+                                {
+                                    if (suffixNode.NodeType != XmlNodeType.Comment)
+                                    {
+                                        suffix = suffixNode.InnerText;
+                                    }
+                                }
+
+                            }
+                            projectNode.Version = String.Format("{0}-{1}", prefix, suffix); ;
+                        }
+                        XmlNodeList packagesNodes = doc.GetElementsByTagName("PackageReference");
+                        if (packagesNodes.Count > 0)
+                        {
+                            foreach (XmlNode package in packagesNodes)
+                            {
+                                DependencyNode childNode = new DependencyNode();
+                                XmlAttributeCollection attributes = package.Attributes;
+                                if (attributes != null)
+                                {
+                                    XmlAttribute include = attributes["Include"];
+                                    XmlAttribute version = attributes["Version"];
+                                    if (include != null && version != null)
+                                    {
+                                        childNode.Artifact = include.Value;
+                                        childNode.Version = version.Value;
+                                        children.Add(childNode);
+                                    }
+                                }
+                            }
+                        }
                     }
-                    children.Add(child);
+                    if (children.Count != 0)
+                    {
+                        projectNode.Children = children;
+                    }
                 }
-                if (children.Count != 0)
+                else
                 {
-                    projectNode.Children = children;
+                    NuGet.PackageReferenceFile configFile = new NuGet.PackageReferenceFile(PackagesConfigPath);
+                    List<NuGet.PackageReference> packages = new List<NuGet.PackageReference>(configFile.GetPackageReferences());
+                    foreach (NuGet.PackageReference packageRef in packages)
+                    {
+                        // Create component node
+                        string componentName = packageRef.Id;
+                        string componentVersion = packageRef.Version.ToString();
+                        DependencyNode child = new DependencyNode();
+                        child.Artifact = componentName;
+                        child.Version = componentVersion;
+
+                        HashSet<DependencyNode> childDependencies = new HashSet<DependencyNode>();
+                        // Add references
+                        List<PackageDependency> packageDependencies = GetPackageDependencies(packageRef, metadataResourceList);
+                        foreach (PackageDependency packageDependency in packageDependencies)
+                        {
+                            // Create node from dependency info
+                            string dependencyName = packageDependency.Id;
+                            string dependencyVersion = GetDependencyVersion(packageDependency, packages);
+
+                            DependencyNode dependency = new DependencyNode();
+                            dependency.Artifact = dependencyName;
+                            dependency.Version = dependencyVersion;
+                            childDependencies.Add(dependency);
+                        }
+                        if (childDependencies.Count != 0)
+                        {
+                            child.Children = childDependencies;
+                        }
+                        children.Add(child);
+                    }
+                    if (children.Count != 0)
+                    {
+                        projectNode.Children = children;
+                    }
                 }
                 Console.WriteLine("Finished processing project {0}", Name);
                 return projectNode;
@@ -191,7 +292,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         private List<PackageMetadataResource> CreateMetaDataResourceList(List<Lazy<INuGetResourceProvider>> providers)
         {
             List<PackageMetadataResource> list = new List<PackageMetadataResource>();
-            string[] splitRepoUrls = PackagesRepoUrl.Split(new char[]{','});
+            string[] splitRepoUrls = PackagesRepoUrl.Split(new char[] { ',' });
 
             foreach (string repoUrl in splitRepoUrls)
             {
@@ -223,9 +324,9 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         }
 
         public List<PackageDependency> GetPackageDependencies(NuGet.PackageReference packageDependency, List<PackageMetadataResource> metadataResourceList)
-        {            
+        {
             HashSet<PackageDependency> dependencySet = new HashSet<PackageDependency>();
-            foreach(PackageMetadataResource metadataResource in metadataResourceList)
+            foreach (PackageMetadataResource metadataResource in metadataResourceList)
             {
                 //Gets all versions of package in package repository
                 List<IPackageSearchMetadata> matchingPackages = new List<IPackageSearchMetadata>(metadataResource.GetMetadataAsync(packageDependency.Id, true, true, new Logger(), CancellationToken.None).Result);

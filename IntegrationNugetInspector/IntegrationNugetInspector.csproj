@@ -6,7 +6,7 @@
     <ProjectGuid>{FEE7ECE1-B25E-4F2B-8DED-93C297AB17CB}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <NoStandardLibraries>false</NoStandardLibraries>
-    <AssemblyName>HubNugetInspector</AssemblyName>
+    <AssemblyName>IntegrationNugetInspector</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>

@@ -8,28 +8,43 @@ using System.Reflection;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
-    public class CommandLineOptions
+    public class RunOptions
     {
-        [ParamKey(ParamKeys.AppSettingsFile, "The file path for the application settings that overrides all settings.")]
+        [CommandLineArg(CommandLineArgKeys.AppSettingsFile, "The file path for the application settings that overrides all settings.")]
         public string AppSettingsFile = "";
 
-        [ParamKey(ParamKeys.TargetPath, "The path to the solution or project file to find dependencies")]
+        [AppConfigArg(AppConfigKeys.TargetPath)]
+        [CommandLineArg(CommandLineArgKeys.TargetPath, "The path to the solution or project file to find dependencies")]
         public string TargetPath = "";
 
-        [ParamKey(ParamKeys.OutputDirectory, "The directory path to output the dependency node files.")]
+        [AppConfigArg(AppConfigKeys.OutputDirectory)]
+        [CommandLineArg(CommandLineArgKeys.OutputDirectory, "The directory path to output the dependency node files.")]
         public string OutputDirectory = "";
 
-        [ParamKey(ParamKeys.ExcludedModules, "The names of the projects in a solution to exclude from dependency node generation.")]
+        [AppConfigArg(AppConfigKeys.ExcludedModules)]
+        [CommandLineArg(CommandLineArgKeys.ExcludedModules, "The names of the projects in a solution to exclude from dependency node generation.")]
         public string ExcludedModules = "";
 
-        [ParamKey(ParamKeys.IgnoreFailures, "If true log the error but do not throw an exception.")]
+        [AppConfigArg(AppConfigKeys.IgnoreFailures)]
+        [CommandLineArg(CommandLineArgKeys.IgnoreFailures, "If true log the error but do not throw an exception.")]
         public string IgnoreFailures = "";
 
-        [ParamKey(ParamKeys.PackagesRepoUrl, "The URL of the NuGet repository to get the packages.")]
+        [AppConfigArg(AppConfigKeys.PackagesRepoUrl)]
+        [CommandLineArg(CommandLineArgKeys.PackagesRepoUrl, "The URL of the NuGet repository to get the packages.")]
         public string PackagesRepoUrl = "";
 
         public bool ShowHelp;
         public bool Verbose;
+
+        public void Override(RunOptions overide)
+        {
+            AppSettingsFile = String.IsNullOrEmpty(overide.AppSettingsFile) ? this.AppSettingsFile : overide.AppSettingsFile;
+            TargetPath = String.IsNullOrEmpty(overide.TargetPath) ? this.TargetPath : overide.TargetPath;
+            OutputDirectory = String.IsNullOrEmpty(overide.OutputDirectory) ? this.OutputDirectory : overide.OutputDirectory;
+            ExcludedModules = String.IsNullOrEmpty(overide.ExcludedModules) ? this.ExcludedModules : overide.ExcludedModules;
+            IgnoreFailures = String.IsNullOrEmpty(overide.IgnoreFailures) ? this.IgnoreFailures : overide.IgnoreFailures;
+            PackagesRepoUrl = String.IsNullOrEmpty(overide.PackagesRepoUrl) ? this.PackagesRepoUrl : overide.PackagesRepoUrl;
+        }
     }
 
     class CommandLineRunner
@@ -42,15 +57,14 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             Dispatch = dispatch;
         }
 
-        //Execute and if succesfull, return a property map of command options.
-        public InspectionResult Execute(string[] args)
+        private RunOptions ParseArguments(string[] args)
         {
-            CommandLineOptions result = new CommandLineOptions();
+            RunOptions result = new RunOptions();
             OptionSet commandOptions = new OptionSet();
 
-            foreach (var field in typeof(CommandLineOptions).GetFields())
+            foreach (var field in typeof(RunOptions).GetFields())
             {
-                var attr = GetParamKeyAttr(field);
+                var attr = GetAttr<CommandLineArgAttribute>(field);
                 if (attr != null)
                 {
                     commandOptions.Add($"{attr.Key}=", attr.Description, (value) => { field.SetValue(result, value); });
@@ -70,68 +84,85 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 return null;
             }
 
-            if (!string.IsNullOrWhiteSpace(result.AppSettingsFile))
-            {
-                ExeConfigurationFileMap configFileMap = new ExeConfigurationFileMap();
-                configFileMap.ExeConfigFilename = result.AppSettingsFile;
-                Configuration config = ConfigurationManager.OpenMappedExeConfiguration(configFileMap, ConfigurationUserLevel.None);
-                foreach (KeyValueConfigurationElement element in config.AppSettings.Settings)
-                {
-                    foreach (var field in typeof(CommandLineOptions).GetFields())
-                    {
-                        var attr = GetParamKeyAttr(field);
-                        if (attr != null && element.Key == attr.Key)
-                        {
-                            if (String.IsNullOrWhiteSpace(field.GetValue(result) as String))
-                            {
-                                field.SetValue(result, element.Value);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(result.TargetPath))
-            {
-                result.TargetPath = Directory.GetCurrentDirectory();
-            }
-
             if (result.ShowHelp)
             {
                 LogOptions(result);
                 ShowHelpMessage("Usage is IntegrationNugetInspector.exe [OPTIONS]", commandOptions);
+                return null;
             }
-            else
+
+            return result;
+        } 
+
+        public RunOptions LoadAppSettings(string path)
+        {
+
+            RunOptions result = new RunOptions();
+            
+            ExeConfigurationFileMap configFileMap = new ExeConfigurationFileMap();
+            configFileMap.ExeConfigFilename = result.AppSettingsFile;
+            Configuration config = ConfigurationManager.OpenMappedExeConfiguration(configFileMap, ConfigurationUserLevel.None);
+            foreach (KeyValueConfigurationElement element in config.AppSettings.Settings)
             {
-                InspectionOptions opts = new InspectionOptions()
+                foreach (var field in typeof(RunOptions).GetFields())
                 {
-                    ExcludedModules = result.ExcludedModules,
-                    IgnoreFailure = result.IgnoreFailures == "true",
-                    OutputDirectory = result.OutputDirectory,
-                    PackagesRepoUrl = result.PackagesRepoUrl,
-                    TargetPath = result.TargetPath,
-                    Verbose = result.Verbose
-                };
-
-                var inspectionResult = Dispatch.Inspect(opts);
-
-                if (inspectionResult != null)
-                {
-                    var writer = new InspectionResultWriter(inspectionResult);
-                    writer.Write();
-                    Console.WriteLine("Info file created at {0}", writer.FilePath());
+                    var attr = GetAttr<AppConfigArgAttribute>(field);
+                    if (attr != null && element.Key == attr.Key)
+                    {
+                         field.SetValue(result, element.Value);
+                    }
                 }
             }
 
-            return null;
+            return result;
         }
 
-        private ParamKeyAttribute GetParamKeyAttr(FieldInfo field)
+        //Execute and if succesfull, return a property map of command options.
+        public InspectionResult Execute(string[] args)
         {
-            var attrs = field.GetCustomAttributes(typeof(ParamKeyAttribute), false);
+            RunOptions options = ParseArguments(args);
+
+            if (options == null) return null;
+
+            if (!string.IsNullOrWhiteSpace(options.AppSettingsFile))
+            {
+                RunOptions appOptions = LoadAppSettings(options.AppSettingsFile);
+                options.Override(appOptions);
+            }
+
+            if (string.IsNullOrWhiteSpace(options.TargetPath))
+            {
+                options.TargetPath = Directory.GetCurrentDirectory();
+            }
+
+            InspectionOptions opts = new InspectionOptions()
+            {
+                ExcludedModules = options.ExcludedModules,
+                IgnoreFailure = options.IgnoreFailures == "true",
+                OutputDirectory = options.OutputDirectory,
+                PackagesRepoUrl = options.PackagesRepoUrl,
+                TargetPath = options.TargetPath,
+                Verbose = options.Verbose
+            };
+
+            var inspectionResult = Dispatch.Inspect(opts);
+
+            if (inspectionResult != null)
+            {
+                var writer = new InspectionResultWriter(inspectionResult);
+                writer.Write();
+                Console.WriteLine("Info file created at {0}", writer.FilePath());
+            }
+
+            return inspectionResult;
+        }
+
+        private T GetAttr<T>(FieldInfo field) where T : class
+        {
+            var attrs = field.GetCustomAttributes(typeof(T), false);
             if (attrs.Length > 0)
             {
-                return attrs[0] as ParamKeyAttribute;
+                return attrs[0] as T;
             }
             return null;
         }
@@ -142,16 +173,16 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             optionSet.WriteOptionDescriptions(Console.Error);
         }
 
-        private void LogOptions(CommandLineOptions options)
+        private void LogOptions(RunOptions options)
         {
 
             Console.WriteLine("Configuration Properties: ");
-            Console.WriteLine("Property {0} = {1}", ParamKeys.AppSettingsFile, options.AppSettingsFile);
-            Console.WriteLine("Property {0} = {1}", ParamKeys.TargetPath, options.TargetPath);
-            Console.WriteLine("Property {0} = {1}", ParamKeys.OutputDirectory, options.OutputDirectory);
-            Console.WriteLine("Property {0} = {1}", ParamKeys.ExcludedModules, options.ExcludedModules);
-            Console.WriteLine("Property {0} = {1}", ParamKeys.IgnoreFailures, options.IgnoreFailures);
-            Console.WriteLine("Property {0} = {1}", ParamKeys.PackagesRepoUrl, options.PackagesRepoUrl);
+            Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.AppSettingsFile, options.AppSettingsFile);
+            Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.TargetPath, options.TargetPath);
+            Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.OutputDirectory, options.OutputDirectory);
+            Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.ExcludedModules, options.ExcludedModules);
+            Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.IgnoreFailures, options.IgnoreFailures);
+            Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.PackagesRepoUrl, options.PackagesRepoUrl);
         }
 
 

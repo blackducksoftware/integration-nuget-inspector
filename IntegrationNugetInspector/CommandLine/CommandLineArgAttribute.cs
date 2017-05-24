@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
-    class ParamKeyAttribute : Attribute
+    class CommandLineArgAttribute : Attribute
     {
         public string Key;
         public string Description;
-        public ParamKeyAttribute(string key, string description = "")
+        public CommandLineArgAttribute(string key, string description = "")
         {
             Key = key;
             Description = description;

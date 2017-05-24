@@ -110,21 +110,15 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
                         string projectPath = InspectorUtil.CreatePath(projectPathSegments);
 
-                        ProjectInspector projectInspector = new ProjectInspector(new ProjectInspectionOptions()
+                        ProjectInspector projectInspector = new ProjectInspector(new ProjectInspectionOptions(Options)
                         {
-                            ExcludedModules = Options.ExcludedModules,
-                            IgnoreFailure = Options.IgnoreFailure,
-                            OutputDirectory = Options.OutputDirectory,
-                            PackagesRepoUrl = Options.PackagesRepoUrl,
-                            ProjectName = projectName,
-                            TargetPath = projectPath,
-                            Verbose = Options.Verbose,
+                            ProjectName = projectName
                         });
 
-                        var projectInspection =  projectInspector.Inspect();
-                        if (projectInspection != null && projectInspection.Node != null)
+                        InspectionResult projectResult =  projectInspector.Inspect();
+                        if (projectResult != null && projectResult.Node != null)
                         {
-                            children.Add(projectInspection.Node);
+                            children.Add(projectResult.Node);
                         }
                     }
                     solutionNode.Children = children;

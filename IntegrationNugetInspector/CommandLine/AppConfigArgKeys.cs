@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
-    public static class ParamKeys
+    public static class AppConfigKeys
     {
-        public const string AppSettingsFile = "app_settings_file";
         public const string TargetPath = "target_path";
         public const string PackagesRepoUrl = "packages_repo_url";
         public const string OutputDirectory = "output_directory";

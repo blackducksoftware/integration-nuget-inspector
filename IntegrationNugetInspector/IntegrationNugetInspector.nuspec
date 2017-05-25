@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>IntegrationNugetInspector</id>
+    <version>0.0.1-alpha</version>
+    <title>IntegrationNugetInspector</title>
+    <authors>Black Duck Software</authors>
+    <owners>Black Duck Software</owners>
+    <licenseUrl>https://raw.githubusercontent.com/blackducksoftware/integration-nuget-inspector/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/blackducksoftware/integration-nuget-inspector</projectUrl>
+    <iconUrl>https://avatars2.githubusercontent.com/u/431461?v=3&amp;s=64</iconUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <description>Executable to generate Black Duck I/O output for use with Hub Pack-Man</description>
+    <releaseNotes>Initial Release</releaseNotes>
+    <copyright>Copyright © 2017 Black Duck Software</copyright>
+    <tags>BlackDuck hub bdio open source security</tags>
+    <dependencies>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="bin\$configuration$\IntegrationNugetInspector.exe" target="lib\net452"/>
+    <file src="bin\$configuration$\IntegrationNugetInspector.exe" target="tools"/>
+    <file src="bin\$configuration$\IntegrationNugetInspector.exe.config" target="tools"/>
+    <file src="bin\$configuration$\*.dll" target="tools"/>
+  </files>
+</package>

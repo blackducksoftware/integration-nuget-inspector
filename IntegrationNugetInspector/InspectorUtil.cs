@@ -43,6 +43,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 {
                     List<string> contents = new List<string>(File.ReadAllLines(path));
                     var versionText = contents.FindAll(text => text.Contains("AssemblyFileVersion"));
+                    if (versionText == null)
+                    {
+                        versionText = contents.FindAll(text => text.Contains("AssemblyVersion"));
+                    }
                     if (versionText != null)
                     {
                         foreach (string text in versionText)

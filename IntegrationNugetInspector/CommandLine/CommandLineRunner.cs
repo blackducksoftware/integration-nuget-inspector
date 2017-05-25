@@ -149,7 +149,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
             if (inspectionResult != null)
             {
-                var writer = new InspectionResultWriter(inspectionResult);
+                var writer = new InspectionResultJsonWriter(inspectionResult);
                 writer.Write();
                 Console.WriteLine("Info file created at {0}", writer.FilePath());
             }

@@ -43,12 +43,9 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 {
                     List<string> contents = new List<string>(File.ReadAllLines(path));
                     List<string> versionText = contents.FindAll(text => text.Contains("AssemblyFileVersion"));
-                    Console.WriteLine("Found AssemblyVersion {0}", versionText.Count);
                     if (versionText == null || versionText.Count == 0)
                     {
-                        Console.WriteLine("Could not find the AssemblyFileVersion");
                         versionText = contents.FindAll(text => text.Contains("AssemblyVersion"));
-                        Console.WriteLine("Found AssemblyVersion {0}", versionText.Count);
                     }
                     if (versionText != null)
                     {
@@ -64,7 +61,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                                 // exclude the ')' and the " characters
                                 int end = lastParen - 1;
                                 version = versionLine.Substring(start, (end - start));
-                                Console.WriteLine("Version {0}", version);
                                 break;
                             }
                         }

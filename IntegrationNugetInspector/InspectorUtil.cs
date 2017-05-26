@@ -42,23 +42,31 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 if (File.Exists(path))
                 {
                     List<string> contents = new List<string>(File.ReadAllLines(path));
-                    var versionText = contents.FindAll(text => text.Contains("AssemblyFileVersion"));
-                    if (versionText == null)
+                    List<string> versionText = contents.FindAll(text => text.Contains("AssemblyFileVersion"));
+                    Console.WriteLine("Found AssemblyVersion {0}", versionText.Count);
+                    if (versionText == null || versionText.Count == 0)
                     {
+                        Console.WriteLine("Could not find the AssemblyFileVersion");
                         versionText = contents.FindAll(text => text.Contains("AssemblyVersion"));
+                        Console.WriteLine("Found AssemblyVersion {0}", versionText.Count);
                     }
                     if (versionText != null)
                     {
                         foreach (string text in versionText)
                         {
-                            int firstParen = text.IndexOf("(");
-                            int lastParen = text.LastIndexOf(")");
-                            // exclude the '(' and the " characters
-                            int start = firstParen + 2;
-                            // exclude the ')' and the " characters
-                            int end = lastParen - 1;
-                            version = text.Substring(start, (end - start));
-                            break;
+                            String versionLine = text.Trim();
+                            if (!versionLine.StartsWith("//"))
+                            {
+                                int firstParen = versionLine.IndexOf("(");
+                                int lastParen = versionLine.LastIndexOf(")");
+                                // exclude the '(' and the " characters
+                                int start = firstParen + 2;
+                                // exclude the ')' and the " characters
+                                int end = lastParen - 1;
+                                version = versionLine.Substring(start, (end - start));
+                                Console.WriteLine("Version {0}", version);
+                                break;
+                            }
                         }
                     }
                 }

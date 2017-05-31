@@ -19,10 +19,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         
         public InspectionResult Inspect(InspectionOptions options)
         {
-            return NewInspector(options)?.Inspect();
+            return CreateInspector(options)?.Inspect();
         }
 
-        public IInspector NewInspector(InspectionOptions options)
+        public IInspector CreateInspector(InspectionOptions options)
         {
             
             if (Directory.Exists(options.TargetPath))

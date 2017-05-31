@@ -171,18 +171,20 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Application.cs" />
+    <Compile Include="CommandLine\AppConfigArgAttribute.cs" />
+    <Compile Include="CommandLine\AppConfigArgKeys.cs" />
+    <Compile Include="CommandLine\CommandLineArgAttribute.cs" />
+    <Compile Include="CommandLine\CommandLineArgKeys.cs" />
     <Compile Include="Inspection\Exceptions\BlackDuckInspectorException.cs" />
     <Compile Include="CommandLine\CommandLineRunner.cs" />
     <Compile Include="Inspection\InspectionResult.cs" />
     <Compile Include="Inspection\InspectionOptions.cs" />
-    <Compile Include="Inspection\Writer\InspectionResultWriter.cs" />
+    <Compile Include="Inspection\Writer\InspectionResultJsonWriter.cs" />
     <Compile Include="Inspection\Util\InspectorDispatch.cs" />
     <Compile Include="Inspection\Util\InspectorUtil.cs" />
     <Compile Include="Inspection\DependencyNode.cs" />
     <Compile Include="Inspection\Inspector.cs" />
     <Compile Include="Logger.cs" />
-    <Compile Include="CommandLine\ParamKeyAttribute.cs" />
-    <Compile Include="CommandLine\ParamKeys.cs" />
     <Compile Include="Inspection\Inspectors\SolutionInspectionOptions.cs" />
     <Compile Include="Inspection\Inspectors\ProjectInspectionOptions.cs" />
     <Compile Include="Inspection\Inspectors\SolutionInspector.cs" />

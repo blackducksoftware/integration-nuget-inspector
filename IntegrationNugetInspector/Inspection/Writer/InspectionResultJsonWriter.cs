@@ -54,7 +54,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             using (JsonWriter writer = new JsonTextWriter(stringWriter))
             {
                 writer.Formatting = Newtonsoft.Json.Formatting.Indented;
-                serializer.Serialize(writer, this);
+                serializer.Serialize(writer, node);
             }
             return stringBuilder.ToString();
         }

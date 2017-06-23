@@ -27,61 +27,81 @@ using System.Linq;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
-    class SolutionInspector : Inspector
+    class SolutionInspector : IInspector
     {
+        public SolutionInspectionOptions Options;
 
-        override public string Execute()
+        public SolutionInspector(SolutionInspectionOptions options)
         {
-            string solutionInfoFilePath = "";
+            Options = options;
+
+            if (Options == null)
+            {
+                throw new Exception("Must provide a valid options object.");
+            }
+
+            if (String.IsNullOrWhiteSpace(Options.OutputDirectory))
+            {
+                string currentDirectory = Directory.GetCurrentDirectory();
+                Options.OutputDirectory = $"{currentDirectory}{Path.DirectorySeparatorChar}{InspectorUtil.DEFAULT_OUTPUT_DIRECTORY}";
+            }
+            if (String.IsNullOrWhiteSpace(Options.SolutionName))
+            {
+                Options.SolutionName = Path.GetFileNameWithoutExtension(Options.TargetPath);
+            }
+        }
+
+        public InspectionResult Inspect()
+        {
             try
             {
-                Setup();
-                DependencyNode solutionNode = GetNode();
-                solutionInfoFilePath = WriteInfoFile(solutionNode);
+                return new InspectionResult()
+                {
+                    Status = InspectionResult.ResultStatus.Success,
+                    ResultName = Options.SolutionName,
+                    OutputDirectory = Options.OutputDirectory,
+                    Node = GetNode()
+                };
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
-                if (IgnoreFailure)
+                Console.WriteLine("{0}", ex.ToString());
+                if (Options.IgnoreFailure)
                 {
-                    Console.WriteLine("Error executing Build BOM task on project {0}, cause: {1}", Name, ex);
+                    Console.WriteLine("Error executing Build BOM task on project {0}, cause: {1}", Options.SolutionName, ex);
+                    return new InspectionResult()
+                    {
+                        Status = InspectionResult.ResultStatus.Success
+                    };
                 }
                 else
                 {
-                    throw ex;
+                    return new InspectionResult()
+                    {
+                        Status = InspectionResult.ResultStatus.Error,
+                        Exception = ex
+                    };
                 }
             }
-            return solutionInfoFilePath;
+            
         }
-
-        override public void Setup()
-        {
-            if (String.IsNullOrWhiteSpace(OutputDirectory))
-            {
-                string currentDirectory = Directory.GetCurrentDirectory();
-                OutputDirectory = $"{currentDirectory}{Path.DirectorySeparatorChar}{InspectorUtil.DEFAULT_OUTPUT_DIRECTORY}";
-            }
-            if (String.IsNullOrWhiteSpace(Name))
-            {
-                Name = Path.GetFileNameWithoutExtension(TargetPath);
-            }
-        }
+        
 
 
-        override public DependencyNode GetNode()
+        public DependencyNode GetNode()
         {
             DependencyNode solutionNode = new DependencyNode();
-            solutionNode.Artifact = Name;
+            solutionNode.Artifact = Options.SolutionName;
             try
             {
-                List<ProjectFile> files = FindProjectFilesFromSolutionFile(TargetPath, ExcludedProjectTypeGUIDs);
+                List<ProjectFile> projectFiles = FindProjectFilesFromSolutionFile(Options.TargetPath, ExcludedProjectTypeGUIDs);
                 Console.WriteLine("Parsed Solution File");
-                if (files.Count > 0)
+                if (projectFiles.Count > 0)
                 {
                     HashSet<DependencyNode> children = new HashSet<DependencyNode>();
-                    string solutionDirectory = Path.GetDirectoryName(TargetPath);
+                    string solutionDirectory = Path.GetDirectoryName(Options.TargetPath);
                     Console.WriteLine("Solution directory: {0}", solutionDirectory);
-                    foreach (ProjectFile project in files)
+                    foreach (ProjectFile project in projectFiles)
                     {
                         string projectRelativePath = project.Path;
                         List<string> projectPathSegments = new List<string>();
@@ -90,34 +110,31 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
                         string projectPath = InspectorUtil.CreatePath(projectPathSegments);
 
-                        ProjectInspector projectInspector = new ProjectInspector();
-                        projectInspector.TargetPath = projectPath;
-                        projectInspector.Verbose = Verbose;
-                        projectInspector.PackagesRepoUrl = PackagesRepoUrl;
-                        projectInspector.Name = project.Name;
-
-                        projectInspector.ExcludedModules = ExcludedModules;
-                        projectInspector.IgnoreFailure = IgnoreFailure;
-                        projectInspector.Setup();
-                        DependencyNode projectNode = projectInspector.GetNode();
-                        if (projectNode != null)
+                        ProjectInspector projectInspector = new ProjectInspector(new ProjectInspectionOptions(Options)
                         {
-                            children.Add(projectNode);
+                            ProjectName = project.Name,
+                            TargetPath = projectPath
+                        });
+
+                        InspectionResult projectResult =  projectInspector.Inspect();
+                        if (projectResult != null && projectResult.Node != null)
+                        {
+                            children.Add(projectResult.Node);
                         }
                     }
                     solutionNode.Children = children;
                 }
                 else
                 {
-                    Console.WriteLine("No project data found for solution {0}", TargetPath);
+                    Console.WriteLine("No project data found for solution {0}", Options.TargetPath);
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
-                if (IgnoreFailure)
+                if (Options.IgnoreFailure)
                 {
-
+                    
                     Console.WriteLine("Error executing Build BOM task. Cause: {0}", ex);
                 }
                 else
@@ -125,23 +142,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     throw ex;
                 }
             }
-
+            
             return solutionNode;
-        }
-
-        override public string WriteInfoFile(DependencyNode solutionNode)
-        {
-            string outputFilePath = "";
-
-            // Creates output directory if it doesn't already exist
-            Directory.CreateDirectory(OutputDirectory);
-
-            // Define output files
-            // TODO: fix file name
-            outputFilePath = $"{OutputDirectory}{Path.DirectorySeparatorChar}{Name}_dependency_node.json";
-            File.WriteAllText(outputFilePath, solutionNode.ToString());
-
-            return outputFilePath;
         }
 
         private class ProjectFile
@@ -203,7 +205,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     {
                         if (!excludedTypeGUIDs.Contains(file.TypeGUID))
                         {
-                           projects.Add(file);
+                            projects.Add(file);
                         }
                     }
                 }
@@ -216,8 +218,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
             return projects;
         }
-
-        
         
     }
 }

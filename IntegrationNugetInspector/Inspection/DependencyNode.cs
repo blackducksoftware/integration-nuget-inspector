@@ -32,22 +32,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public string Version { get; set; }
         public HashSet<DependencyNode> Children { get; set; }
 
-        public override string ToString()
-        {
-            StringBuilder stringBuilder = new StringBuilder();
-            StringWriter stringWriter = new StringWriter(stringBuilder);
-
-            JsonSerializer serializer = new JsonSerializer();
-            serializer.NullValueHandling = NullValueHandling.Ignore;
-
-            using (JsonWriter writer = new JsonTextWriter(stringWriter))
-            {
-                writer.Formatting = Newtonsoft.Json.Formatting.Indented;
-                serializer.Serialize(writer, this);
-            }
-            return stringBuilder.ToString();
-        }
-
         public override int GetHashCode()
         {
             int prime = 31;

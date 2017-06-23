@@ -55,7 +55,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         }
 
         override public void Setup()
-        {           
+        {
             if (String.IsNullOrWhiteSpace(OutputDirectory))
             {
                 string currentDirectory = Directory.GetCurrentDirectory();
@@ -74,16 +74,16 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             solutionNode.Artifact = Name;
             try
             {
-                Dictionary<string, string> projectData = ParseSolutionFile(TargetPath);
+                List<ProjectFile> files = FindProjectFilesFromSolutionFile(TargetPath, ExcludedProjectTypeGUIDs);
                 Console.WriteLine("Parsed Solution File");
-                if (projectData.Count > 0)
+                if (files.Count > 0)
                 {
                     HashSet<DependencyNode> children = new HashSet<DependencyNode>();
                     string solutionDirectory = Path.GetDirectoryName(TargetPath);
                     Console.WriteLine("Solution directory: {0}", solutionDirectory);
-                    foreach (string projectName in projectData.Keys)
+                    foreach (ProjectFile project in files)
                     {
-                        string projectRelativePath = projectData[projectName];
+                        string projectRelativePath = project.Path;
                         List<string> projectPathSegments = new List<string>();
                         projectPathSegments.Add(solutionDirectory);
                         projectPathSegments.Add(projectRelativePath);
@@ -94,12 +94,12 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                         projectInspector.TargetPath = projectPath;
                         projectInspector.Verbose = Verbose;
                         projectInspector.PackagesRepoUrl = PackagesRepoUrl;
-                        projectInspector.Name = projectName;
+                        projectInspector.Name = project.Name;
 
                         projectInspector.ExcludedModules = ExcludedModules;
                         projectInspector.IgnoreFailure = IgnoreFailure;
                         projectInspector.Setup();
-                        DependencyNode projectNode =  projectInspector.GetNode();
+                        DependencyNode projectNode = projectInspector.GetNode();
                         if (projectNode != null)
                         {
                             children.Add(projectNode);
@@ -117,7 +117,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 Console.WriteLine(ex.ToString());
                 if (IgnoreFailure)
                 {
-                    
+
                     Console.WriteLine("Error executing Build BOM task. Cause: {0}", ex);
                 }
                 else
@@ -125,7 +125,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     throw ex;
                 }
             }
-            
+
             return solutionNode;
         }
 
@@ -140,13 +140,56 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             // TODO: fix file name
             outputFilePath = $"{OutputDirectory}{Path.DirectorySeparatorChar}{Name}_dependency_node.json";
             File.WriteAllText(outputFilePath, solutionNode.ToString());
-            
+
             return outputFilePath;
         }
 
-        private Dictionary<string, string> ParseSolutionFile(string solutionPath)
+        private class ProjectFile
         {
-            Dictionary<string, string> projectDataMap = new Dictionary<string, string>();
+            public string TypeGUID;
+            public string Name;
+            public string GUID;
+            public string Path;
+
+            public static ProjectFile Parse(string projectLine)
+            {
+                //projectLine format: Project(type) = name, file, guid
+                //projectLine example: Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NUnitFramework", "NUnitFramework", "{5D8A9D62-C11C-45B2-8965-43DE8160B558}"
+
+
+                var equalSplit = projectLine.Split('=').Select(s => s.Trim()).ToList();
+                if (equalSplit.Count() < 2) return null;
+
+                var file = new ProjectFile();
+                string leftSide = equalSplit[0];
+                string rightSide = equalSplit[1];
+                if (leftSide.StartsWith("Project(\"") && leftSide.EndsWith("\")"))
+                {
+                    file.TypeGUID = MiddleOfString(leftSide, "Project(\"".Length, "\")".Length);
+                }
+                var opts = rightSide.Split(',').Select(s => s.Trim()).ToList();
+                if (opts.Count() >= 1) file.Name = MiddleOfString(opts[0], 1, 1); //strip quotes
+                if (opts.Count() >= 2) file.Path = MiddleOfString(opts[1], 1, 1); //strip quotes
+                if (opts.Count() >= 3) file.GUID = MiddleOfString(opts[2], 1, 1); //strip quotes
+
+                return file;
+            }
+
+            private static string MiddleOfString(string source, int fromLeft, int fromRight)
+            {
+                var left = source.Substring(fromLeft);
+                return left.Substring(0, left.Length - fromRight);
+            }
+
+        }
+
+        private List<string> ExcludedProjectTypeGUIDs = new List<string>() {
+            "{2150E333-8FDC-42A3-9474-1A3956D46DE8}"    //Ignore 'Solution Folders'
+        };
+
+        private List<ProjectFile> FindProjectFilesFromSolutionFile(string solutionPath, List<string> excludedTypeGUIDs)
+        {
+            var projects = new List<ProjectFile>();
             // Visual Studio right now is not resolving the Microsoft.Build.Construction.SolutionFile type
             // parsing the solution file manually for now.
             if (File.Exists(solutionPath))
@@ -155,28 +198,26 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 var projectLines = contents.FindAll(text => text.StartsWith("Project("));
                 foreach (string projectText in projectLines)
                 {
-                    int equalIndex = projectText.IndexOf("=");
-                    if (equalIndex > -1)
+                    ProjectFile file = ProjectFile.Parse(projectText);
+                    if (file != null)
                     {
-                        string projectValuesCSV = projectText.Substring(equalIndex + 1);
-                        projectValuesCSV = projectValuesCSV.Replace("\"", "");
-                        string[] projectValues = projectValuesCSV.Split(new char[] { ',' });
-
-                        if (projectValues.Length >= 2)
+                        if (!excludedTypeGUIDs.Contains(file.TypeGUID))
                         {
-                            projectDataMap[projectValues[0].Trim()] = projectValues[1].Trim();
+                           projects.Add(file);
                         }
                     }
                 }
-                Console.WriteLine("Black Duck I/O Generation Found {0} Project elements, processed {1} project elements for data", projectLines.Count(), projectDataMap.Count());
+                Console.WriteLine("Black Duck I/O Generation Found {0} Project elements, processed {1} project elements for data", projectLines.Count(), projects.Count());
             }
             else
             {
                 throw new BlackDuckInspectorException("Solution File " + solutionPath + " not found");
             }
 
-            return projectDataMap;
+            return projects;
         }
+
+        
         
     }
 }

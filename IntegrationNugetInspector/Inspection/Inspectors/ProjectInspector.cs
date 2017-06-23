@@ -130,7 +130,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 {
                     try
                     {
-                        Project proj = new Project(Options.TargetPath);
+                        //ProjectCollection collection = new ProjectCollection();
+                        Project proj = new Project(Options.TargetPath);//,   collection);
                         foreach (ProjectItem reference in proj.GetItems("Reference"))
                         {
                             if (reference.Xml != null && !String.IsNullOrWhiteSpace(reference.Xml.Include) && reference.Xml.Include.Contains("Version"))
@@ -146,6 +147,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                                 children.Add(childNode);
                             }
                         }
+                        ProjectCollection.GlobalProjectCollection.UnloadProject(proj);
                     }
                     catch (InvalidProjectFileException e)
                     {

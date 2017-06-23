@@ -118,7 +118,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         }
 
         //Execute and if succesfull, return a property map of command options.
-        public InspectionResult Execute(string[] args)
+        public List<InspectionResult> Execute(string[] args)
         {
             RunOptions options = ParseArguments(args);
 
@@ -145,16 +145,19 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 Verbose = options.Verbose
             };
 
-            var inspectionResult = Dispatch.Inspect(opts);
+            var inspectionResults = Dispatch.Inspect(opts);
 
-            if (inspectionResult != null)
+            if (inspectionResults != null)
             {
-                var writer = new InspectionResultJsonWriter(inspectionResult);
-                writer.Write();
-                Console.WriteLine("Info file created at {0}", writer.FilePath());
+                foreach (var result in inspectionResults)
+                {
+                    var writer = new InspectionResultJsonWriter(result);
+                    writer.Write();
+                    Console.WriteLine("Info file created at {0}", writer.FilePath());
+                }
             }
 
-            return inspectionResult;
+            return inspectionResults;
         }
 
         private T GetAttr<T>(FieldInfo field) where T : class

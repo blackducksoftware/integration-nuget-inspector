@@ -17,24 +17,28 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
         }
         
-        public InspectionResult Inspect(InspectionOptions options)
+        public List<InspectionResult> Inspect(InspectionOptions options)
         {
-            return CreateInspector(options)?.Inspect();
+            return CreateInspectors(options)?.Select(insp => insp.Inspect()).ToList();
         }
 
-        public IInspector CreateInspector(InspectionOptions options)
+        public List<IInspector> CreateInspectors(InspectionOptions options)
         {
-            
+            var inspectors = new List<IInspector>();
             if (Directory.Exists(options.TargetPath))
             {
-                Console.WriteLine("Searching for a solution file to process...");
+                Console.WriteLine("Searching for solution files to process...");
                 string[] solutionPaths = Directory.GetFiles(options.TargetPath, "*.sln");
 
                 if (solutionPaths != null && solutionPaths.Length >= 1)
                 {
-                    var solutionOp = new SolutionInspectionOptions(options);
-                    solutionOp.TargetPath = solutionPaths[0];
-                    return new SolutionInspector(solutionOp);
+                    foreach (var solution in solutionPaths)
+                    {
+                        var solutionOp = new SolutionInspectionOptions(options);
+                        solutionOp.TargetPath = solution;
+                        inspectors.Add(new SolutionInspector(solutionOp));
+                    }
+                    
                 }
                 else
                 {
@@ -42,16 +46,17 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     string[] projectPaths = Directory.GetFiles(options.TargetPath, "*.*proj");
                     if (projectPaths != null && projectPaths.Length > 0)
                     {
-                        string projectPath = projectPaths[0];
-                        Console.WriteLine("Found project {0}", projectPath);
-                        var projectOp = new ProjectInspectionOptions(options);
-                        projectOp.TargetPath = options.TargetPath;
-                        return new ProjectInspector(projectOp);
+                        foreach (var projectPath in projectPaths)
+                        { 
+                            Console.WriteLine("Found project {0}", projectPath);
+                            var projectOp = new ProjectInspectionOptions(options);
+                            projectOp.TargetPath = options.TargetPath;
+                            inspectors.Add(new ProjectInspector(projectOp));
+                        }
                     }
                     else
                     {
                         Console.WriteLine("No Project file found. Finished.");
-                        return null;
                     }
                 }
             }
@@ -61,17 +66,17 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 {
                     var solutionOp = new SolutionInspectionOptions(options);
                     solutionOp.TargetPath = options.TargetPath;
-                    return new SolutionInspector(solutionOp);
+                    inspectors.Add(new SolutionInspector(solutionOp));
                 }
                 else
                 {
                     var projectOp = new ProjectInspectionOptions(options);
                     projectOp.TargetPath = options.TargetPath;
-                    return new ProjectInspector(projectOp);
+                    inspectors.Add(new ProjectInspector(projectOp));
                 }
             }
 
-            return null;
+            return inspectors;
         }
 
     }

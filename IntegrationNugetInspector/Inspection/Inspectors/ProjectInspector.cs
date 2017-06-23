@@ -29,7 +29,6 @@ using NuGet.Protocol.Core.Types;
 using NuGet.Protocol.Core.v2;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -37,63 +36,83 @@ using System.Xml;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
-    class ProjectInspector : Inspector
+    class ProjectInspector : IInspector
     {
-        public string VersionName { get; set; }
-        public string PackagesConfigPath { get; set; }
+        public ProjectInspectionOptions Options;
 
-        override public string Execute()
+        public ProjectInspector(ProjectInspectionOptions options)
         {
-            string projectInfoFilePath = "";
+            Options = options;
+
+            if (Options == null)
+            {
+                throw new Exception("Must provide a valid options object.");
+            }
+
+            if (String.IsNullOrWhiteSpace(Options.ProjectDirectory))
+            {
+                Options.ProjectDirectory = Directory.GetParent(Options.TargetPath).FullName;
+            }
+           
+            if (String.IsNullOrWhiteSpace(Options.PackagesConfigPath))
+            {
+                Options.PackagesConfigPath = CreateProjectPackageConfigPath(Options.ProjectDirectory);
+            }
+
+            if (String.IsNullOrWhiteSpace(Options.ProjectName))
+            {
+                Options.ProjectName = Path.GetFileNameWithoutExtension(Options.TargetPath);
+            }
+
+            if (String.IsNullOrWhiteSpace(Options.VersionName))
+            {
+                Options.VersionName = InspectorUtil.GetProjectAssemblyVersion(Options.ProjectDirectory);
+            }
+        }
+
+        public InspectionResult Inspect()
+        {
+
             try
             {
-                Setup();
-                DependencyNode projectNode = GetNode();
-                projectInfoFilePath = WriteInfoFile(projectNode);
+                return new InspectionResult()
+                {
+                    Status = InspectionResult.ResultStatus.Success,
+                    ResultName = Options.ProjectName,
+                    OutputDirectory = Options.OutputDirectory,
+                    Node = GetNode()
+                };
             }
             catch (Exception ex)
             {
                 Console.WriteLine("{0}", ex.ToString());
-                if (IgnoreFailure)
+                if (Options.IgnoreFailure)
                 {
-                    Console.WriteLine("Error collecting dependencyinformation on project {0}, cause: {1}", Name, ex);
+                    Console.WriteLine("Error collecting dependencyinformation on project {0}, cause: {1}", Options.ProjectName, ex);
+                    return new InspectionResult()
+                    {
+                        Status = InspectionResult.ResultStatus.Success,
+                        ResultName = Options.ProjectName,
+                        OutputDirectory = Options.OutputDirectory
+                    };
                 }
                 else
                 {
-                    throw ex;
+                    return new InspectionResult()
+                    {
+                        Status = InspectionResult.ResultStatus.Error,
+                        Exception = ex
+                    };
                 }
             }
-            return projectInfoFilePath;
+            
         }
-
-
-        override public void Setup()
-        {
-            string projectDirectory = Directory.GetParent(TargetPath).FullName;
-            if (String.IsNullOrWhiteSpace(PackagesConfigPath))
-            {
-                PackagesConfigPath = CreateProjectPackageConfigPath(projectDirectory);
-            }
-            if (String.IsNullOrWhiteSpace(OutputDirectory))
-            {
-                string currentDirectory = Directory.GetCurrentDirectory();
-                OutputDirectory = $"{currentDirectory}{Path.DirectorySeparatorChar}{InspectorUtil.DEFAULT_OUTPUT_DIRECTORY}";
-            }
-            if (String.IsNullOrWhiteSpace(Name))
-            {
-                Name = Path.GetFileNameWithoutExtension(TargetPath);
-            }
-            if (String.IsNullOrWhiteSpace(VersionName))
-            {
-                VersionName = InspectorUtil.GetProjectAssemblyVersion(projectDirectory);
-            }
-        }
-
-        override public DependencyNode GetNode()
+        
+        public DependencyNode GetNode()
         {
             if (IsExcluded())
             {
-                Console.WriteLine("Project {0} excluded from task", Name);
+                Console.WriteLine("Project {0} excluded from task", Options.ProjectName);
                 return null;
             }
             else
@@ -102,16 +121,16 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 providers.AddRange(Repository.Provider.GetCoreV3());  // Add v3 API support
                 providers.AddRange(Repository.Provider.GetCoreV2());  // Add v2 API support
                 List<PackageMetadataResource> metadataResourceList = CreateMetaDataResourceList(providers);
-                Console.WriteLine("Processing Project: {0}", Name);
+                Console.WriteLine("Processing Project: {0}", Options.ProjectName);
                 DependencyNode projectNode = new DependencyNode();
-                projectNode.Artifact = Name;
-                projectNode.Version = VersionName;
+                projectNode.Artifact = Options.ProjectName;
+                projectNode.Version = Options.VersionName;
                 HashSet<DependencyNode> children = new HashSet<DependencyNode>();
-                if (String.IsNullOrWhiteSpace(PackagesConfigPath) || !File.Exists(PackagesConfigPath))
+                if (String.IsNullOrWhiteSpace(Options.PackagesConfigPath) || !File.Exists(Options.PackagesConfigPath))
                 {
                     try
                     {
-                        Project proj = new Project(TargetPath);
+                        Project proj = new Project(Options.TargetPath);
                         foreach (ProjectItem reference in proj.GetItems("Reference"))
                         {
                             if (reference.Xml != null && !String.IsNullOrWhiteSpace(reference.Xml.Include) && reference.Xml.Include.Contains("Version"))
@@ -134,7 +153,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                         projectNode.Version = "1.0.0";
 
                         XmlDocument doc = new XmlDocument();
-                        doc.Load(TargetPath);
+                        doc.Load(Options.TargetPath);
 
                         XmlNodeList versionNodes = doc.GetElementsByTagName("Version");
                         if (versionNodes != null && versionNodes.Count > 0)
@@ -204,7 +223,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 }
                 else
                 {
-                    NuGet.PackageReferenceFile configFile = new NuGet.PackageReferenceFile(PackagesConfigPath);
+                    NuGet.PackageReferenceFile configFile = new NuGet.PackageReferenceFile(Options.PackagesConfigPath);
                     List<NuGet.PackageReference> packages = new List<NuGet.PackageReference>(configFile.GetPackageReferences());
                     foreach (NuGet.PackageReference packageRef in packages)
                     {
@@ -240,44 +259,30 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                         projectNode.Children = children;
                     }
                 }
-                Console.WriteLine("Finished processing project {0}", Name);
+                Console.WriteLine("Finished processing project {0}", Options.ProjectName);
                 return projectNode;
             }
         }
 
 
-        override public string WriteInfoFile(DependencyNode projectNode)
-        {
-            string outputFilePath = "";
-            if (!IsExcluded())
-            {
-                // Creates output directory if it doesn't already exist
-                Directory.CreateDirectory(OutputDirectory);
-
-                // Define output files
-                // TODO: fix file name
-                outputFilePath = $"{OutputDirectory}{Path.DirectorySeparatorChar}{Name}_dependency_node.json";
-                File.WriteAllText(outputFilePath, projectNode.ToString());
-            }
-            return outputFilePath;
-        }
+        
 
         public bool IsExcluded()
         {
 
-            if (String.IsNullOrWhiteSpace(ExcludedModules))
+            if (String.IsNullOrWhiteSpace(Options.ExcludedModules))
             {
                 return false;
             }
             else
             {
                 ISet<string> excludedSet = new HashSet<string>();
-                string[] projectNameArray = this.ExcludedModules.Split(new char[] { ',' });
+                string[] projectNameArray = Options.ExcludedModules.Split(new char[] { ',' });
                 foreach (string projectName in projectNameArray)
                 {
                     excludedSet.Add(projectName.Trim());
                 }
-                return excludedSet.Contains(Name.Trim());
+                return excludedSet.Contains(Options.ProjectName.Trim());
             }
         }
 
@@ -292,8 +297,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         private List<PackageMetadataResource> CreateMetaDataResourceList(List<Lazy<INuGetResourceProvider>> providers)
         {
             List<PackageMetadataResource> list = new List<PackageMetadataResource>();
-            string[] splitRepoUrls = PackagesRepoUrl.Split(new char[] { ',' });
-
+            string[] splitRepoUrls = Options.PackagesRepoUrl.Split(new char[] { ',' });
             foreach (string repoUrl in splitRepoUrls)
             {
                 string url = repoUrl.Trim();
@@ -364,25 +368,5 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
     }
 
-    // For the NuGet API
-    public class Logger : NuGet.Common.ILogger
-    {
-        public void LogDebug(string data) => Trace.WriteLine($"DEBUG: {data}");
-        public void LogVerbose(string data) => Trace.WriteLine($"VERBOSE: {data}");
-        public void LogInformation(string data) => Trace.WriteLine($"INFORMATION: {data}");
-        public void LogMinimal(string data) => Trace.WriteLine($"MINIMAL: {data}");
-        public void LogWarning(string data) => Trace.WriteLine($"WARNING: {data}");
-        public void LogError(string data) => Trace.WriteLine($"ERROR: {data}");
-        public void LogSummary(string data) => Trace.WriteLine($"SUMMARY: {data}");
-
-        public void LogInformationSummary(string data)
-        {
-            Trace.WriteLine($"INFORMATION SUMMARY: {data}");
-        }
-
-        public void LogErrorSummary(string data)
-        {
-            Trace.WriteLine($"ERROR SUMMARY: {data}");
-        }
-    }
+    
 }

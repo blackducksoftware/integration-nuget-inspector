@@ -126,12 +126,37 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 projectNode.Artifact = Options.ProjectName;
                 projectNode.Version = Options.VersionName;
                 HashSet<DependencyNode> children = new HashSet<DependencyNode>();
+
+                //Try to parse all output paths for all configurations. 
+                try
+                {
+                    Project proj = new Project(Options.TargetPath);
+                    List<string> outputPaths = new List<string>();
+                    List<string> configurations;
+                    proj.ConditionedProperties.TryGetValue("Configuration", out configurations);
+                    if (configurations == null) configurations = new List<string>();
+                    foreach (var config in configurations)
+                    {
+                        proj.SetProperty("Configuration", config);
+                        proj.ReevaluateIfNecessary();
+                        var path = proj.GetPropertyValue("OutputPath");
+                        var fullPath = Path.GetFullPath(Path.Combine(proj.DirectoryPath, path));
+                        outputPaths.Add(fullPath);
+                    }
+                    projectNode.OutputPaths = outputPaths;
+                    ProjectCollection.GlobalProjectCollection.UnloadProject(proj);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Unable to load configuration output paths for project {0}", Options.ProjectName);
+                }
+
                 if (String.IsNullOrWhiteSpace(Options.PackagesConfigPath) || !File.Exists(Options.PackagesConfigPath))
                 {
                     try
                     {
-                        //ProjectCollection collection = new ProjectCollection();
-                        Project proj = new Project(Options.TargetPath);//,   collection);
+                        Project proj = new Project(Options.TargetPath);
+                        
                         foreach (ProjectItem reference in proj.GetItems("Reference"))
                         {
                             if (reference.Xml != null && !String.IsNullOrWhiteSpace(reference.Xml.Include) && reference.Xml.Include.Contains("Version"))

@@ -50,7 +50,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                         { 
                             Console.WriteLine("Found project {0}", projectPath);
                             var projectOp = new ProjectInspectionOptions(options);
-                            projectOp.TargetPath = options.TargetPath;
+                            projectOp.TargetPath = projectPath;
                             inspectors.Add(new ProjectInspector(projectOp));
                         }
                     }

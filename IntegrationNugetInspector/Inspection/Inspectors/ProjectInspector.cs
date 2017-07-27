@@ -33,6 +33,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Xml;
+using Com.Blackducksoftware.Integration.Nuget.DependencyResolvers;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
@@ -53,10 +54,20 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             {
                 Options.ProjectDirectory = Directory.GetParent(Options.TargetPath).FullName;
             }
-           
+
             if (String.IsNullOrWhiteSpace(Options.PackagesConfigPath))
             {
                 Options.PackagesConfigPath = CreateProjectPackageConfigPath(Options.ProjectDirectory);
+            }
+
+            if (String.IsNullOrWhiteSpace(Options.ProjectJsonPath))
+            {
+                Options.ProjectJsonPath = CreateProjectJsonPath(Options.ProjectDirectory);
+            }
+
+            if (String.IsNullOrWhiteSpace(Options.ProjectJsonLockPath))
+            {
+                Options.ProjectJsonLockPath = CreateProjectJsonLockPath(Options.ProjectDirectory);
             }
 
             if (String.IsNullOrWhiteSpace(Options.ProjectName))
@@ -105,9 +116,9 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     };
                 }
             }
-            
+
         }
-        
+
         public DependencyNode GetNode()
         {
             if (IsExcluded())
@@ -117,182 +128,84 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
             else
             {
-                List<Lazy<INuGetResourceProvider>> providers = new List<Lazy<INuGetResourceProvider>>();
-                providers.AddRange(Repository.Provider.GetCoreV3());  // Add v3 API support
-                providers.AddRange(Repository.Provider.GetCoreV2());  // Add v2 API support
-                List<PackageMetadataResource> metadataResourceList = CreateMetaDataResourceList(providers);
                 Console.WriteLine("Processing Project: {0}", Options.ProjectName);
                 DependencyNode projectNode = new DependencyNode();
                 projectNode.Artifact = Options.ProjectName;
                 projectNode.Version = Options.VersionName;
-                HashSet<DependencyNode> children = new HashSet<DependencyNode>();
 
                 //Try to parse all output paths for all configurations. 
-                try
+                projectNode.OutputPaths = FindOutputPaths();
+                bool packagesConfigExists = !String.IsNullOrWhiteSpace(Options.PackagesConfigPath) && File.Exists(Options.PackagesConfigPath);
+                bool projectJsonExists = !String.IsNullOrWhiteSpace(Options.ProjectJsonPath) && File.Exists(Options.ProjectJsonPath);
+                bool projectJsonLockExists = !String.IsNullOrWhiteSpace(Options.ProjectJsonLockPath) && File.Exists(Options.ProjectJsonLockPath);
+
+                if (packagesConfigExists)
                 {
-                    Project proj = new Project(Options.TargetPath);
-                    List<string> outputPaths = new List<string>();
-                    List<string> configurations;
-                    proj.ConditionedProperties.TryGetValue("Configuration", out configurations);
-                    if (configurations == null) configurations = new List<string>();
-                    foreach (var config in configurations)
-                    {
-                        proj.SetProperty("Configuration", config);
-                        proj.ReevaluateIfNecessary();
-                        var path = proj.GetPropertyValue("OutputPath");
-                        var fullPath = Path.GetFullPath(Path.Combine(proj.DirectoryPath, path));
-                        outputPaths.Add(fullPath);
-                    }
-                    projectNode.OutputPaths = outputPaths;
-                    ProjectCollection.GlobalProjectCollection.UnloadProject(proj);
+                    var packagesConfigResolver = new PackagesConfigResolver(Options.PackagesConfigPath, Options.PackagesRepoUrl);
+                    var packagesConfigResult = packagesConfigResolver.Process();
+                    projectNode.Children = packagesConfigResult.Nodes;
                 }
-                catch (Exception e)
+                else if (projectJsonLockExists)
                 {
-                    Console.WriteLine("Unable to load configuration output paths for project {0}", Options.ProjectName);
+                    var projectJsonLockResolver = new ProjectLockJsonResolver(Options.ProjectJsonLockPath);
+                    var projectJsonLockResult = projectJsonLockResolver.Process();
+                    projectNode.Children = projectJsonLockResult.Nodes;
                 }
-
-                if (String.IsNullOrWhiteSpace(Options.PackagesConfigPath) || !File.Exists(Options.PackagesConfigPath))
+                else if (projectJsonExists)
                 {
-                    try
-                    {
-                        Project proj = new Project(Options.TargetPath);
-                        
-                        foreach (ProjectItem reference in proj.GetItems("Reference"))
-                        {
-                            if (reference.Xml != null && !String.IsNullOrWhiteSpace(reference.Xml.Include) && reference.Xml.Include.Contains("Version"))
-                            {
-                                string packageInfo = reference.Xml.Include;
-
-                                DependencyNode childNode = new DependencyNode();
-                                childNode.Artifact = packageInfo.Substring(0, packageInfo.IndexOf(","));
-                                string version = packageInfo.Substring(packageInfo.IndexOf("Version=") + 8);
-                                version = version.Substring(0, version.IndexOf(","));
-                                version = version.Substring(0, version.LastIndexOf("."));
-                                childNode.Version = version;
-                                children.Add(childNode);
-                            }
-                        }
-                        ProjectCollection.GlobalProjectCollection.UnloadProject(proj);
-                    }
-                    catch (InvalidProjectFileException e)
-                    {
-                        // .NET core default version
-                        projectNode.Version = "1.0.0";
-
-                        XmlDocument doc = new XmlDocument();
-                        doc.Load(Options.TargetPath);
-
-                        XmlNodeList versionNodes = doc.GetElementsByTagName("Version");
-                        if (versionNodes != null && versionNodes.Count > 0)
-                        {
-                            foreach (XmlNode version in versionNodes)
-                            {
-                                if (version.NodeType != XmlNodeType.Comment)
-                                {
-                                    projectNode.Version = version.InnerText;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            string prefix = "1.0.0";
-                            string suffix = "";
-                            XmlNodeList prefixNodes = doc.GetElementsByTagName("VersionPrefix");
-                            if (prefixNodes != null && prefixNodes.Count > 0)
-                            {
-                                foreach (XmlNode prefixNode in prefixNodes)
-                                {
-                                    if (prefixNode.NodeType != XmlNodeType.Comment)
-                                    {
-                                        prefix = prefixNode.InnerText;
-                                    }
-                                }
-                            }
-                            XmlNodeList suffixNodes = doc.GetElementsByTagName("VersionSuffix");
-                            if (suffixNodes != null && suffixNodes.Count > 0)
-                            {
-                                foreach (XmlNode suffixNode in suffixNodes)
-                                {
-                                    if (suffixNode.NodeType != XmlNodeType.Comment)
-                                    {
-                                        suffix = suffixNode.InnerText;
-                                    }
-                                }
-
-                            }
-                            projectNode.Version = String.Format("{0}-{1}", prefix, suffix); ;
-                        }
-                        XmlNodeList packagesNodes = doc.GetElementsByTagName("PackageReference");
-                        if (packagesNodes.Count > 0)
-                        {
-                            foreach (XmlNode package in packagesNodes)
-                            {
-                                DependencyNode childNode = new DependencyNode();
-                                XmlAttributeCollection attributes = package.Attributes;
-                                if (attributes != null)
-                                {
-                                    XmlAttribute include = attributes["Include"];
-                                    XmlAttribute version = attributes["Version"];
-                                    if (include != null && version != null)
-                                    {
-                                        childNode.Artifact = include.Value;
-                                        childNode.Version = version.Value;
-                                        children.Add(childNode);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (children.Count != 0)
-                    {
-                        projectNode.Children = children;
-                    }
+                    var projectJsonResolver = new ProjectJsonResolver(Options.ProjectName, Options.ProjectJsonPath);
+                    var projectJsonResult = projectJsonResolver.Process();
+                    projectNode.Children = projectJsonResult.Nodes;
                 }
                 else
                 {
-                    NuGet.PackageReferenceFile configFile = new NuGet.PackageReferenceFile(Options.PackagesConfigPath);
-                    List<NuGet.PackageReference> packages = new List<NuGet.PackageReference>(configFile.GetPackageReferences());
-                    foreach (NuGet.PackageReference packageRef in packages)
+                    var referenceResolver = new ProjectReferenceResolver(Options.TargetPath);
+                    var projectReferencesResult = referenceResolver.Process();
+                    if (projectReferencesResult.Success)
                     {
-                        // Create component node
-                        string componentName = packageRef.Id;
-                        string componentVersion = packageRef.Version.ToString();
-                        DependencyNode child = new DependencyNode();
-                        child.Artifact = componentName;
-                        child.Version = componentVersion;
-
-                        HashSet<DependencyNode> childDependencies = new HashSet<DependencyNode>();
-                        // Add references
-                        List<PackageDependency> packageDependencies = GetPackageDependencies(packageRef, metadataResourceList);
-                        foreach (PackageDependency packageDependency in packageDependencies)
-                        {
-                            // Create node from dependency info
-                            string dependencyName = packageDependency.Id;
-                            string dependencyVersion = GetDependencyVersion(packageDependency, packages);
-
-                            DependencyNode dependency = new DependencyNode();
-                            dependency.Artifact = dependencyName;
-                            dependency.Version = dependencyVersion;
-                            childDependencies.Add(dependency);
-                        }
-                        if (childDependencies.Count != 0)
-                        {
-                            child.Children = childDependencies;
-                        }
-                        children.Add(child);
+                        projectNode.Children = projectReferencesResult.Nodes;
                     }
-                    if (children.Count != 0)
+                    else
                     {
-                        projectNode.Children = children;
+                        var xmlResolver = new ProjectXmlResolver(Options.TargetPath);
+                        var xmlResult = xmlResolver.Process();
+                        projectNode.Version = xmlResult.ProjectVersion;
+                        projectNode.Children = xmlResult.Nodes;
                     }
                 }
+
                 Console.WriteLine("Finished processing project {0}", Options.ProjectName);
                 return projectNode;
             }
         }
-
-
         
+        
+        public List<String> FindOutputPaths()
+        {
+            try
+            {
+                Project proj = new Project(Options.TargetPath);
+                List<string> outputPaths = new List<string>();
+                List<string> configurations;
+                proj.ConditionedProperties.TryGetValue("Configuration", out configurations);
+                if (configurations == null) configurations = new List<string>();
+                foreach (var config in configurations)
+                {
+                    proj.SetProperty("Configuration", config);
+                    proj.ReevaluateIfNecessary();
+                    var path = proj.GetPropertyValue("OutputPath");
+                    var fullPath = Path.GetFullPath(Path.Combine(proj.DirectoryPath, path));
+                    outputPaths.Add(fullPath);
+                }
+                ProjectCollection.GlobalProjectCollection.UnloadProject(proj);
+                return outputPaths;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Unable to load configuration output paths for project {0}", Options.ProjectName);
+                return new List<string>();
+            }
+        }
 
         public bool IsExcluded()
         {
@@ -313,87 +226,30 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
         }
 
-        private string CreateProjectPackageConfigPath(string projectDirectory)
+        private string CreateRelativePathToFile(string projectDirectory, string filename)
         {
             List<string> pathSegments = new List<string>();
             pathSegments.Add(projectDirectory);
-            pathSegments.Add("packages.config");
+            pathSegments.Add(filename);
             return InspectorUtil.CreatePath(pathSegments);
         }
 
-        private List<PackageMetadataResource> CreateMetaDataResourceList(List<Lazy<INuGetResourceProvider>> providers)
+        private string CreateProjectPackageConfigPath(string projectDirectory)
         {
-            List<PackageMetadataResource> list = new List<PackageMetadataResource>();
-            string[] splitRepoUrls = Options.PackagesRepoUrl.Split(new char[] { ',' });
-            foreach (string repoUrl in splitRepoUrls)
-            {
-                string url = repoUrl.Trim();
-                if (!String.IsNullOrWhiteSpace(url))
-                {
-                    PackageSource packageSource = new PackageSource(url);
-                    SourceRepository sourceRepository = new SourceRepository(packageSource, providers);
-                    PackageMetadataResource packageMetadataResource = sourceRepository.GetResource<PackageMetadataResource>();
-                    list.Add(packageMetadataResource);
-                }
-            }
-
-            return list;
+            return CreateRelativePathToFile(projectDirectory, "packages.config");
         }
 
-        private string GetDependencyVersion(PackageDependency packageDependency, List<NuGet.PackageReference> packages)
+        private string CreateProjectJsonPath(string projectDirectory)
         {
-            string version = null;
-            foreach (NuGet.PackageReference packageRef in packages)
-            {
-                if (packageRef.Id == packageDependency.Id)
-                {
-                    version = packageRef.Version.ToString();
-                    break;
-                }
-            }
-            return version;
+            return CreateRelativePathToFile(projectDirectory, "project.json");
         }
 
-        public List<PackageDependency> GetPackageDependencies(NuGet.PackageReference packageDependency, List<PackageMetadataResource> metadataResourceList)
+        private string CreateProjectJsonLockPath(string projectDirectory)
         {
-            HashSet<PackageDependency> dependencySet = new HashSet<PackageDependency>();
-            foreach (PackageMetadataResource metadataResource in metadataResourceList)
-            {
-                //Gets all versions of package in package repository
-                List<IPackageSearchMetadata> matchingPackages = new List<IPackageSearchMetadata>(metadataResource.GetMetadataAsync(packageDependency.Id, true, true, new Logger(), CancellationToken.None).Result);
-                foreach (IPackageSearchMetadata matchingPackage in matchingPackages)
-                {
-                    // Check if the matching package is the same as the version defined
-                    if (matchingPackage.Identity.Version.ToString() == packageDependency.Version.ToString())
-                    {
-                        // Gets every dependency set in the package
-                        foreach (PackageDependencyGroup packageDependencySet in matchingPackage.DependencySets)
-                        {
-                            // Grab the dependency set for the target framework. We only care about majors and minors in the version
-                            if (FrameworksMatch(packageDependencySet, packageDependency))
-                            {
-                                dependencySet.AddRange(packageDependencySet.Packages);
-                                break;
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-
-            List<PackageDependency> dependencies = new List<PackageDependency>();
-            dependencies.AddRange(dependencySet);
-            return dependencies;
-        }
-
-        private bool FrameworksMatch(PackageDependencyGroup framework1, NuGet.PackageReference framework2)
-        {
-            bool majorMatch = framework1.TargetFramework.Version.Major == framework2.TargetFramework.Version.Major;
-            bool minorMatch = framework1.TargetFramework.Version.Minor == framework2.TargetFramework.Version.Minor;
-            return majorMatch && minorMatch;
+            return CreateRelativePathToFile(projectDirectory, "project.lock.json");
         }
 
     }
 
-    
 }
+

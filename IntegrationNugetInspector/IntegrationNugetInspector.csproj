@@ -175,6 +175,13 @@
     <Compile Include="CommandLine\AppConfigArgKeys.cs" />
     <Compile Include="CommandLine\CommandLineArgAttribute.cs" />
     <Compile Include="CommandLine\CommandLineArgKeys.cs" />
+    <Compile Include="Inspection\DependencyResolvers\DependencyResolver.cs" />
+    <Compile Include="Inspection\DependencyResolvers\DependencyResult.cs" />
+    <Compile Include="Inspection\DependencyResolvers\PackagesConfigResolver.cs" />
+    <Compile Include="Inspection\DependencyResolvers\ProjectJsonResolver.cs" />
+    <Compile Include="Inspection\DependencyResolvers\ProjectLockJsonResolver.cs" />
+    <Compile Include="Inspection\DependencyResolvers\ProjectReferenceResolver.cs" />
+    <Compile Include="Inspection\DependencyResolvers\ProjectXmlResolver.cs" />
     <Compile Include="Inspection\Exceptions\BlackDuckInspectorException.cs" />
     <Compile Include="CommandLine\CommandLineRunner.cs" />
     <Compile Include="Inspection\InspectionResult.cs" />

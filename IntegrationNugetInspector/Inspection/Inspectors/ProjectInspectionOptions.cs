@@ -27,6 +27,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public string ProjectDirectory { get; set; }
         public string VersionName { get; set; }
         public string PackagesConfigPath { get; set; }
-        
+        public string ProjectJsonPath { get; set; }
+        public string ProjectJsonLockPath { get; set; }
+
     }
 }

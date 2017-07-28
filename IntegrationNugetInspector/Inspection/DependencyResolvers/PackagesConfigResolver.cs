@@ -99,11 +99,11 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
                         foreach (PackageDependencyGroup packageDependencySet in matchingPackage.DependencySets)
                         {
                             // Grab the dependency set for the target framework. We only care about majors and minors in the version
-                            if (FrameworksMatch(packageDependencySet, packageDependency))
-                            {
+                            //if (FrameworksMatch(packageDependencySet, packageDependency))
+                            //{
                                 dependencySet.AddRange(packageDependencySet.Packages);
-                                break;
-                            }
+                             //   break;
+                            //}
                         }
                         break;
                     }

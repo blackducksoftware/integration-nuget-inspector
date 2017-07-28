@@ -92,6 +92,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         {
             DependencyNode solutionNode = new DependencyNode();
             solutionNode.Artifact = Options.SolutionName;
+            solutionNode.SourcePath = Options.TargetPath;
+            solutionNode.Type = "Solution";
             try
             {
                 List<ProjectFile> projectFiles = FindProjectFilesFromSolutionFile(Options.TargetPath, ExcludedProjectTypeGUIDs);

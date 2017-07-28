@@ -132,6 +132,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 DependencyNode projectNode = new DependencyNode();
                 projectNode.Artifact = Options.ProjectName;
                 projectNode.Version = Options.VersionName;
+                projectNode.SourcePath = Options.TargetPath;
+                projectNode.Type = "Project";
 
                 //Try to parse all output paths for all configurations. 
                 projectNode.OutputPaths = FindOutputPaths();

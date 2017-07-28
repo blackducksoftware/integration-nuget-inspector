@@ -32,6 +32,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public string Version { get; set; }
         public HashSet<DependencyNode> Children { get; set; }
         public List<string> OutputPaths { get; set; } = new List<string>();
+        public string SourcePath { get; set; }
+        public string Type { get; set; } = "Dependency";
 
         public override int GetHashCode()
         {

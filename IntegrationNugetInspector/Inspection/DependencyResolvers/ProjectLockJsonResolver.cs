@@ -44,6 +44,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
 
         public DependencyResult Process()
         {
+
+
             var result = new DependencyResult();
 
             Dictionary<LibraryId, DependencyNode> libraryMap = new Dictionary<LibraryId, DependencyNode>();

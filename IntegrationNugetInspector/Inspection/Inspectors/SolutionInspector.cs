@@ -23,18 +23,19 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-
+using Com.Blackducksoftware.Integration.Nuget.Search;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
     class SolutionInspector : IInspector
     {
         public SolutionInspectionOptions Options;
+        public NugetSearchService NugetService;
 
-        public SolutionInspector(SolutionInspectionOptions options)
+        public SolutionInspector(SolutionInspectionOptions options, NugetSearchService nugetService)
         {
             Options = options;
-
+            NugetService = nugetService;
             if (Options == null)
             {
                 throw new Exception("Must provide a valid options object.");
@@ -116,7 +117,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                         {
                             ProjectName = project.Name,
                             TargetPath = projectPath
-                        });
+                        }, NugetService);
 
                         InspectionResult projectResult =  projectInspector.Inspect();
                         if (projectResult != null && projectResult.Node != null)

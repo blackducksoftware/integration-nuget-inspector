@@ -34,17 +34,19 @@ using System.Linq;
 using System.Threading;
 using System.Xml;
 using Com.Blackducksoftware.Integration.Nuget.DependencyResolvers;
+using Com.Blackducksoftware.Integration.Nuget.Search;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
     class ProjectInspector : IInspector
     {
         public ProjectInspectionOptions Options;
+        public NugetSearchService NugetService;
 
-        public ProjectInspector(ProjectInspectionOptions options)
+        public ProjectInspector(ProjectInspectionOptions options, NugetSearchService nugetService)
         {
             Options = options;
-
+            NugetService = nugetService;
             if (Options == null)
             {
                 throw new Exception("Must provide a valid options object.");
@@ -143,7 +145,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
                 if (packagesConfigExists)
                 {
-                    var packagesConfigResolver = new PackagesConfigResolver(Options.PackagesConfigPath, Options.PackagesRepoUrl);
+                    var packagesConfigResolver = new PackagesConfigResolver(Options.PackagesConfigPath, Options.PackagesRepoUrl, NugetService);
                     var packagesConfigResult = packagesConfigResolver.Process();
                     projectNode.Children = packagesConfigResult.Nodes;
                 }

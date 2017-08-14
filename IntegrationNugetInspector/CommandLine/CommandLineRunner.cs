@@ -5,6 +5,7 @@ using System.Collections.Specialized;
 using System.Configuration;
 using System.IO;
 using System.Reflection;
+using Com.Blackducksoftware.Integration.Nuget.Search;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
@@ -31,7 +32,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
         [AppConfigArg(AppConfigKeys.PackagesRepoUrl)]
         [CommandLineArg(CommandLineArgKeys.PackagesRepoUrl, "The URL of the NuGet repository to get the packages.")]
-        public string PackagesRepoUrl = "";
+        public string PackagesRepoUrl = "https://www.nuget.org/";
 
         public bool ShowHelp;
         public bool Verbose;
@@ -145,7 +146,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 Verbose = options.Verbose
             };
 
-            var inspectionResults = Dispatch.Inspect(opts);
+            var searchService = new NugetSearchService(options.PackagesRepoUrl);
+            var inspectionResults = Dispatch.Inspect(opts, searchService);
 
             if (inspectionResults != null)
             {

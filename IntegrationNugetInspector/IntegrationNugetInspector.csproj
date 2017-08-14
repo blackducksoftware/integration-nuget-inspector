@@ -187,6 +187,7 @@
     <Compile Include="CommandLine\CommandLineRunner.cs" />
     <Compile Include="Inspection\InspectionResult.cs" />
     <Compile Include="Inspection\InspectionOptions.cs" />
+    <Compile Include="Inspection\NugetService.cs" />
     <Compile Include="Inspection\Util\ProjectFile.cs" />
     <Compile Include="Inspection\Writer\InspectionResultJsonWriter.cs" />
     <Compile Include="Inspection\Util\InspectorDispatch.cs" />

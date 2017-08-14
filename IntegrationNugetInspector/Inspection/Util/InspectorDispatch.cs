@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Com.Blackducksoftware.Integration.Nuget.Search;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
@@ -11,18 +12,18 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
     //Given a generic InspectionOptions, InspectorDispatch is responsible for instantiating the correct Inspector (Project or Solution)
     class InspectorDispatch
     {
+        
 
         public InspectorDispatch()
         {
-
         }
         
-        public List<InspectionResult> Inspect(InspectionOptions options)
+        public List<InspectionResult> Inspect(InspectionOptions options, NugetSearchService nugetService)
         {
-            return CreateInspectors(options)?.Select(insp => insp.Inspect()).ToList();
+            return CreateInspectors(options, nugetService)?.Select(insp => insp.Inspect()).ToList();
         }
 
-        public List<IInspector> CreateInspectors(InspectionOptions options)
+        public List<IInspector> CreateInspectors(InspectionOptions options, NugetSearchService nugetService)
         {
             var inspectors = new List<IInspector>();
             if (Directory.Exists(options.TargetPath))
@@ -36,7 +37,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     {
                         var solutionOp = new SolutionInspectionOptions(options);
                         solutionOp.TargetPath = solution;
-                        inspectors.Add(new SolutionInspector(solutionOp));
+                        inspectors.Add(new SolutionInspector(solutionOp, nugetService));
                     }
                     
                 }
@@ -51,7 +52,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                             Console.WriteLine("Found project {0}", projectPath);
                             var projectOp = new ProjectInspectionOptions(options);
                             projectOp.TargetPath = projectPath;
-                            inspectors.Add(new ProjectInspector(projectOp));
+                            inspectors.Add(new ProjectInspector(projectOp, nugetService));
                         }
                     }
                     else
@@ -66,13 +67,13 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 {
                     var solutionOp = new SolutionInspectionOptions(options);
                     solutionOp.TargetPath = options.TargetPath;
-                    inspectors.Add(new SolutionInspector(solutionOp));
+                    inspectors.Add(new SolutionInspector(solutionOp, nugetService));
                 }
                 else
                 {
                     var projectOp = new ProjectInspectionOptions(options);
                     projectOp.TargetPath = options.TargetPath;
-                    inspectors.Add(new ProjectInspector(projectOp));
+                    inspectors.Add(new ProjectInspector(projectOp, nugetService));
                 }
             }
 

@@ -23,7 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Com.Blackducksoftware.Integration.Nuget.Search;
+using Com.Blackducksoftware.Integration.Nuget;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {

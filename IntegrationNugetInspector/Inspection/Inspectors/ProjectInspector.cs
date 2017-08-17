@@ -34,7 +34,7 @@ using System.Linq;
 using System.Threading;
 using System.Xml;
 using Com.Blackducksoftware.Integration.Nuget.DependencyResolvers;
-using Com.Blackducksoftware.Integration.Nuget.Search;
+using Com.Blackducksoftware.Integration.Nuget;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {

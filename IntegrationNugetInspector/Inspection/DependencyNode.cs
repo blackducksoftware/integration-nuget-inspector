@@ -26,7 +26,7 @@ using Newtonsoft.Json;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
-    class DependencyNode
+    public class DependencyNode
     {
         public string Artifact { get; set; }
         public string Version { get; set; }

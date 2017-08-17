@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Com.Blackducksoftware.Integration.Nuget.Search;
+using Com.Blackducksoftware.Integration.Nuget;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {

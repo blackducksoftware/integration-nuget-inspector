@@ -55,6 +55,24 @@ namespace Com.Blackducksoftware.Integration.Nuget
             return result;
         }
 
+        public HashSet<DependencyNode> ProcessAll(List<NugetDependency> packages)
+        {
+            var result = new HashSet<DependencyNode>();
+
+            foreach (NugetDependency package in packages)
+            {
+                Add(package.Name, package.VersionRange, package.Framework);
+            }
+
+            foreach (NugetDependency package in packages)
+            {
+                DependencyNode node = Build(package.Name);
+                result.Add(node);
+            }
+
+            return result;
+        }
+
         public void Add(string name, VersionRange range, NugetFramework framework)
         {
             name = name.ToLower();

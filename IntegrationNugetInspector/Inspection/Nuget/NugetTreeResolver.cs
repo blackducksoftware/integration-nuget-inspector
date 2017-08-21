@@ -26,16 +26,32 @@ namespace Com.Blackducksoftware.Integration.Nuget
             nuget = service;
         }
 
-        public HashSet<DependencyNode> Build (NugetDependency packageDependency, NugetFramework framework = null)
+        public HashSet<DependencyNode> ProcessAll(List<NugetDependency> packages)
         {
-            HashSet<DependencyNode> dependencies = new HashSet<DependencyNode>();
+            var result = new HashSet<DependencyNode>();
+            foreach (NugetDependency package in packages)
+            {
+                DependencyNode node = Build(package);
+                result.Add(node);
+            }
+            return result;
+        }
+        
+        public DependencyNode Build (NugetDependency packageDependency, NugetFramework framework = null)
+        {
+            var node = new DependencyNode();
+            node.Artifact = packageDependency.Name;
+            node.Children = new HashSet<DependencyNode>();
 
             var package = nuget.FindBestPackage(packageDependency.Name, packageDependency.VersionRange);
             if (package == null) {
                 Console.WriteLine($"Unable to find package for '{packageDependency.Name}' version '{packageDependency.VersionRange}'");
-                return dependencies;
+                node.Version = packageDependency.VersionRange.MinVersion.ToNormalizedString();
+                return node;
             }
-                     
+
+            node.Version = package.Identity.Version.ToNormalizedString();
+
             foreach (PackageDependencyGroup group in package.DependencySets)
             {
                 if (framework == null || nuget.FrameworksMatch(group, framework))
@@ -49,17 +65,14 @@ namespace Com.Blackducksoftware.Integration.Nuget
                             continue;
                         }
 
-                        DependencyNode dependencyNode = new DependencyNode();
-                        dependencyNode.Artifact = depPackage.Identity.Id;
-                        dependencyNode.Version = depPackage.Identity.Version.ToNormalizedString();
-                        dependencyNode.Children = Build(new NugetDependency(dependency.Id, dependency.VersionRange), framework);
-                        dependencies.Add(dependencyNode);
+                        DependencyNode childNode = Build(new NugetDependency(dependency.Id, dependency.VersionRange), framework);
+                        node.Children.Add(childNode);
                     }
 
                 }
             }
 
-            return dependencies;
+            return node;
 
         }
     }

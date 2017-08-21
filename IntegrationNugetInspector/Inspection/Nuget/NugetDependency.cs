@@ -33,5 +33,13 @@ namespace Com.Blackducksoftware.Integration.Nuget
             Name = dependency.Id;
             VersionRange = dependency.VersionRange;
         }
+
+        public DependencyNode ToDependencyNode()
+        {
+            var node = new DependencyNode();
+            node.Artifact = Name;
+            node.Version = VersionRange.MinVersion.ToNormalizedString();
+            return node;
+        }
     }
 }

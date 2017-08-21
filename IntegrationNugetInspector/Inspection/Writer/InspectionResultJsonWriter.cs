@@ -38,25 +38,17 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             
             Directory.CreateDirectory(outputDirectory);
 
-            // TODO: don't rely on toString to correctly serialize - make this JsonWriter and manually (or auto map if inclined) to JSON. Or implement with formatters of somekind.
-            File.WriteAllText(outputFilePath, SerializeNode(Result.Node));
-
-        }
-
-        public string SerializeNode(DependencyNode node)
-        {
-            StringBuilder stringBuilder = new StringBuilder();
-            StringWriter stringWriter = new StringWriter(stringBuilder);
-
-            JsonSerializer serializer = new JsonSerializer();
-            serializer.NullValueHandling = NullValueHandling.Ignore;
-
-            using (JsonWriter writer = new JsonTextWriter(stringWriter))
+            using (var fs = new FileStream(outputFilePath, FileMode.Create))
             {
-                writer.Formatting = Newtonsoft.Json.Formatting.Indented;
-                serializer.Serialize(writer, node);
+                using (var sw = new StreamWriter(fs))
+                {
+                    JsonSerializer serializer = new JsonSerializer();
+                    serializer.NullValueHandling = NullValueHandling.Ignore;
+                    JsonTextWriter writer = new JsonTextWriter(sw);
+                    serializer.Serialize(writer, Result.Node);
+                }
             }
-            return stringBuilder.ToString();
         }
+
     }
 }

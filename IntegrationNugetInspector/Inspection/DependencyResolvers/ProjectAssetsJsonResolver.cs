@@ -7,19 +7,19 @@ using Com.Blackducksoftware.Integration.Nuget.Inspector;
 
 namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
 {
-    class ProjectLockJsonResolver : DependencyResolver
+    class ProjectAssetsJsonResolver : DependencyResolver
     {
-        private string ProjectLockJsonPath;
+        private string ProjectAssetsJsonPath;
 
-        public ProjectLockJsonResolver(string projectLockJsonPath)
+        public ProjectAssetsJsonResolver(string projectAssetsJsonPath)
         {
-            ProjectLockJsonPath = projectLockJsonPath;
+            ProjectAssetsJsonPath = projectAssetsJsonPath;
         }
 
         public DependencyResult Process()
         {
 
-            NuGet.ProjectModel.LockFile lockFile = NuGet.ProjectModel.LockFileUtilities.GetLockFile(ProjectLockJsonPath, null);
+            NuGet.ProjectModel.LockFile lockFile = NuGet.ProjectModel.LockFileUtilities.GetLockFile(ProjectAssetsJsonPath, null);
 
             var resolver = new NugetLockFileResolver(lockFile);
 
@@ -28,6 +28,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
 
             return result;
         }
-        
+
     }
 }

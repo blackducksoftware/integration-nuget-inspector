@@ -72,6 +72,11 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 Options.ProjectJsonLockPath = CreateProjectJsonLockPath(Options.ProjectDirectory);
             }
 
+            if (String.IsNullOrWhiteSpace(Options.ProjectAssetsJsonPath))
+            {
+                Options.ProjectAssetsJsonPath = CreateProjectAssetsJsonPath(Options.ProjectDirectory);
+            }
+
             if (String.IsNullOrWhiteSpace(Options.ProjectName))
             {
                 Options.ProjectName = Path.GetFileNameWithoutExtension(Options.TargetPath);
@@ -137,15 +142,16 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 projectNode.SourcePath = Options.TargetPath;
                 projectNode.Type = "Project";
 
-                //Try to parse all output paths for all configurations. 
                 projectNode.OutputPaths = FindOutputPaths();
+
                 bool packagesConfigExists = !String.IsNullOrWhiteSpace(Options.PackagesConfigPath) && File.Exists(Options.PackagesConfigPath);
                 bool projectJsonExists = !String.IsNullOrWhiteSpace(Options.ProjectJsonPath) && File.Exists(Options.ProjectJsonPath);
                 bool projectJsonLockExists = !String.IsNullOrWhiteSpace(Options.ProjectJsonLockPath) && File.Exists(Options.ProjectJsonLockPath);
+                bool projectAssetsJsonExists = !String.IsNullOrWhiteSpace(Options.ProjectAssetsJsonPath) && File.Exists(Options.ProjectAssetsJsonPath);
 
                 if (packagesConfigExists)
                 {
-                    var packagesConfigResolver = new PackagesConfigResolver(Options.PackagesConfigPath, Options.PackagesRepoUrl, NugetService);
+                    var packagesConfigResolver = new PackagesConfigResolver(Options.PackagesConfigPath, NugetService);
                     var packagesConfigResult = packagesConfigResolver.Process();
                     projectNode.Children = packagesConfigResult.Nodes;
                 }
@@ -154,6 +160,12 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     var projectJsonLockResolver = new ProjectLockJsonResolver(Options.ProjectJsonLockPath);
                     var projectJsonLockResult = projectJsonLockResolver.Process();
                     projectNode.Children = projectJsonLockResult.Nodes;
+                }
+                else if (projectAssetsJsonExists)
+                {
+                    var projectAssetsJsonResolver = new ProjectAssetsJsonResolver(Options.ProjectAssetsJsonPath);
+                    var projectAssetsJsonResult = projectAssetsJsonResolver.Process();
+                    projectNode.Children = projectAssetsJsonResult.Nodes;
                 }
                 else if (projectJsonExists)
                 {
@@ -182,8 +194,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 return projectNode;
             }
         }
-        
-        
+
+
         public List<String> FindOutputPaths()
         {
             try
@@ -251,6 +263,11 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         private string CreateProjectJsonLockPath(string projectDirectory)
         {
             return CreateRelativePathToFile(projectDirectory, "project.lock.json");
+        }
+
+        private string CreateProjectAssetsJsonPath(string projectDirectory)
+        {
+            return CreateRelativePathToFile(projectDirectory, $"obj{Path.DirectorySeparatorChar}project.assets.json");
         }
 
     }

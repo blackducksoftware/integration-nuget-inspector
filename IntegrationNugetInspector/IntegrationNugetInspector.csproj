@@ -176,9 +176,11 @@
     <Compile Include="CommandLine\AppConfigArgKeys.cs" />
     <Compile Include="CommandLine\CommandLineArgAttribute.cs" />
     <Compile Include="CommandLine\CommandLineArgKeys.cs" />
+    <Compile Include="Inspection\DependencyNodeUtil.cs" />
     <Compile Include="Inspection\DependencyResolvers\DependencyResolver.cs" />
     <Compile Include="Inspection\DependencyResolvers\DependencyResult.cs" />
     <Compile Include="Inspection\DependencyResolvers\PackagesConfigResolver.cs" />
+    <Compile Include="Inspection\DependencyResolvers\ProjectAssetsJsonResolver.cs" />
     <Compile Include="Inspection\DependencyResolvers\ProjectJsonResolver.cs" />
     <Compile Include="Inspection\DependencyResolvers\ProjectLockJsonResolver.cs" />
     <Compile Include="Inspection\DependencyResolvers\ProjectReferenceResolver.cs" />
@@ -187,7 +189,7 @@
     <Compile Include="CommandLine\CommandLineRunner.cs" />
     <Compile Include="Inspection\InspectionResult.cs" />
     <Compile Include="Inspection\InspectionOptions.cs" />
-    <Compile Include="Inspection\Nuget\NugetResolver.cs" />
+    <Compile Include="Inspection\Nuget\NugetLockFileResolver.cs" />
     <Compile Include="Inspection\Nuget\NugetTreeResolver.cs" />
     <Compile Include="Inspection\Nuget\NugetFlatResolver.cs" />
     <Compile Include="Inspection\Nuget\NugetFramework.cs" />

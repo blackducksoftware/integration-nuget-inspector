@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Com.Blackducksoftware.Integration.Nuget.Inspector;
+using Model =  Com.Blackducksoftware.Integration.Nuget.Inspector.Model;
 
 namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
 {
@@ -11,7 +12,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
     {
         public bool Success { get; set; } = true;
         public string ProjectVersion { get; set; } = null;
-        public HashSet<DependencyNode> Nodes { get; set; } = new HashSet<DependencyNode>();
-
+        public List<Model.PackageSet> Packages { get; set; } = new List<Model.PackageSet>();
+        public List<Model.PackageId> Dependencies { get; set; } = new List<Model.PackageId>();
     }
 }

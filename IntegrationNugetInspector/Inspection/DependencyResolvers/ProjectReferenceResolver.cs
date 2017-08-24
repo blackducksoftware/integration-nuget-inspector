@@ -13,40 +13,46 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
     {
 
         private string ProjectPath;
-
-        public ProjectReferenceResolver(string projectPath)
+        private NugetSearchService NugetSearchService;
+        public ProjectReferenceResolver(string projectPath, NugetSearchService nugetSearchService)
         {
             ProjectPath = projectPath;
+            NugetSearchService = nugetSearchService;
         }
 
         public DependencyResult Process()
         {
             try
             {
-                HashSet<DependencyNode> children = new HashSet<DependencyNode>();
+                var tree = new NugetTreeResolver(NugetSearchService);
+
                 Project proj = new Project(ProjectPath);
 
+                List<NugetDependency> deps = new List<NugetDependency>();
                 foreach (ProjectItem reference in proj.GetItems("Reference"))
                 {
                     if (reference.Xml != null && !String.IsNullOrWhiteSpace(reference.Xml.Include) && reference.Xml.Include.Contains("Version"))
                     {
                         string packageInfo = reference.Xml.Include;
 
-                        DependencyNode childNode = new DependencyNode();
-                        childNode.Artifact = packageInfo.Substring(0, packageInfo.IndexOf(","));
+                        var artifact = packageInfo.Substring(0, packageInfo.IndexOf(","));
                         string version = packageInfo.Substring(packageInfo.IndexOf("Version=") + 8);
-                        version = version.Substring(0, version.IndexOf(","));
-                        version = version.Substring(0, version.LastIndexOf("."));
-                        childNode.Version = version;
-                        children.Add(childNode);
+
+                        var dep = new NugetDependency(artifact, NuGet.Versioning.VersionRange.Parse(version));
+                        deps.Add(dep);
                     }
                 }
                 ProjectCollection.GlobalProjectCollection.UnloadProject(proj);
 
+                foreach (var dep in deps)
+                {
+                    tree.Add(dep);
+                }
+
                 return new DependencyResult()
                 {
                     Success = true,
-                    Nodes = children
+                    Packages = tree.GetPackageList()
                 };
             }
             catch (InvalidProjectFileException e)

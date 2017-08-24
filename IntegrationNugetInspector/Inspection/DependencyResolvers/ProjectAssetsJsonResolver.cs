@@ -23,10 +23,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
 
             var resolver = new NugetLockFileResolver(lockFile);
 
-            var result = new DependencyResult();
-            result.Nodes = resolver.Process();
-
-            return result;
+            return resolver.Process();
         }
 
     }

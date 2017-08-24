@@ -12,6 +12,7 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Protocol.Core.v2;
 using NuGet.Versioning;
+using Model = Com.Blackducksoftware.Integration.Nuget.Inspector.Model;
 
 namespace Com.Blackducksoftware.Integration.Nuget
 {
@@ -25,7 +26,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
         private class ResolutionData
         {
             public string Id;
-            public Version CurrentVersion;
+            public NuGetVersion CurrentVersion;
             public VersionRange ExternalVersionRange = null;
             public Dictionary<string, VersionRange> Dependencies = new Dictionary<string, VersionRange>();
         }
@@ -55,22 +56,25 @@ namespace Com.Blackducksoftware.Integration.Nuget
             return result;
         }
 
-        public HashSet<DependencyNode> ProcessAll(List<NugetDependency> packages)
+        public List<Model.PackageSet> ProcessAll(List<NugetDependency> packages)
         {
-            var result = new HashSet<DependencyNode>();
-
             foreach (NugetDependency package in packages)
             {
                 Add(package.Name, package.VersionRange, package.Framework);
             }
 
-            foreach (NugetDependency package in packages)
+            var builder = new Model.PackageSetBuilder();
+            foreach (ResolutionData data in resolutionData.Values)
             {
-                DependencyNode node = Build(package.Name);
-                result.Add(node);
+                var deps = new HashSet<Model.PackageId>();
+                foreach(var dep in data.Dependencies.Keys)
+                {
+                    deps.Add(new Model.PackageId(dep, resolutionData[dep].CurrentVersion.ToNormalizedString()));
+                }
+                builder.AddOrUpdatePackage(new Model.PackageId(data.Id, data.CurrentVersion.ToNormalizedString()), deps);
             }
-
-            return result;
+            
+            return builder.GetPackageList();
         }
 
         public void Add(string name, VersionRange range, NugetFramework framework)
@@ -119,7 +123,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
             }
 
             data.Id = best.Identity.Id;
-            data.CurrentVersion = best.Identity.Version.Version;
+            data.CurrentVersion = best.Identity.Version;
             data.Dependencies.Clear();
 
             foreach (PackageDependencyGroup group in best.DependencySets)
@@ -136,23 +140,6 @@ namespace Com.Blackducksoftware.Integration.Nuget
 
         }
 
-        public DependencyNode Build(string baseId)
-        {
-            baseId = baseId.ToLower();
-            var data = resolutionData[baseId];
-
-            var node = new DependencyNode();
-            node.Artifact = data.Id;
-            node.Version = data.CurrentVersion.ToString();
-            node.Children = new HashSet<DependencyNode>();
-
-            foreach (var dep in data.Dependencies)
-            {
-                node.Children.Add(Build(dep.Key));
-            }
-
-            return node;
-        }
     }
 
 }

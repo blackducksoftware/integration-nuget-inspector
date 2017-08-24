@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Com.Blackducksoftware.Integration.Nuget.Inspector;
+using Model = Com.Blackducksoftware.Integration.Nuget.Inspector.Model;
 
 namespace Com.Blackducksoftware.Integration.Nuget
 {
@@ -16,101 +17,48 @@ namespace Com.Blackducksoftware.Integration.Nuget
             LockFile = lockFile;
         }
 
-        public class LibraryId : IEquatable<LibraryId>
+        private NuGet.Versioning.NuGetVersion BestVersion(string name, NuGet.Versioning.VersionRange range, IList<NuGet.ProjectModel.LockFileTargetLibrary> libraries)
         {
-            public string Name { get; set; }
-            public string Version { get; set; }
-            public NuGet.Versioning.NuGetVersion NuGetVersion { get; set; }
-
-            public LibraryId(string name, string version)
-            {
-                Name = name;
-                Version = version;
-                NuGetVersion = new NuGet.Versioning.NuGetVersion(version);
-            }
-            public override int GetHashCode()
-            {
-                return Name.GetHashCode() ^ Version.GetHashCode();
-            }
-            public override bool Equals(object obj)
-            {
-                return Equals(obj as LibraryId);
-            }
-            public bool Equals(LibraryId obj)
-            {
-                return obj != null && obj.Name == this.Name && obj.Version == this.Version;
-            }
+            var versions = libraries.Where(lib => lib.Name == name).Select(lib => lib.Version);
+            return range.FindBestMatch(versions);
         }
 
-        public HashSet<DependencyNode> Process()
+
+        public DependencyResolvers.DependencyResult Process()
         {
-            Dictionary<LibraryId, DependencyNode> libraryMap = new Dictionary<LibraryId, DependencyNode>();
-            Dictionary<DependencyNode, List<NuGet.Packaging.Core.PackageDependency>> dependencyMap = new Dictionary<DependencyNode, List<NuGet.Packaging.Core.PackageDependency>>();
-            
+            var builder = new Model.PackageSetBuilder();
+            var result = new DependencyResolvers.DependencyResult();
+
             foreach (var target in LockFile.Targets)
             {
                 foreach (var library in target.Libraries)
                 {
                     string name = library.Name;
                     string version = library.Version.ToNormalizedString();
-                    var id = new LibraryId(name, version);
+                    var packageId = new Model.PackageId(name, version);
 
-                    if (!libraryMap.ContainsKey(id))
+                    HashSet<Model.PackageId> dependencies = new HashSet<Model.PackageId>();
+                    foreach (var dep in library.Dependencies)
                     {
-                        var node = new DependencyNode();
-                        node.Artifact = name;
-                        node.Version = version;
-                        libraryMap[id] = node;
-                        dependencyMap[node] = library.Dependencies.ToList();
+                        var depId = new Model.PackageId(dep.Id, BestVersion(dep.Id, dep.VersionRange, target.Libraries).ToNormalizedString());
+                        dependencies.Add(depId);
                     }
-                    else
-                    {
-                        //TODO: Verify the already added one has the same dependencies. 
-                    }
+
+                    builder.AddOrUpdatePackage(packageId, dependencies);
                 }
+                
             }
 
-
-            List<DependencyNode> parentless = libraryMap.Values.ToList();
-
-            foreach (var pair in dependencyMap)
+            foreach (var framework in LockFile.PackageSpec.TargetFrameworks)
             {
-                var node = pair.Key;
-                var deps = pair.Value;
-
-                foreach (var dep in deps)
+                foreach (var dep in framework.Dependencies)
                 {
-                    DependencyNode found = null;
-                    foreach (var libPair in libraryMap)
-                    {
-                        var id = libPair.Key;
-                        if (id.Name == dep.Id && dep.VersionRange.Satisfies(id.NuGetVersion))
-                        {
-                            if (found == null)
-                            {
-                                found = libPair.Value;
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Duplicate libraries matching the {dep.Id} with range {dep.VersionRange.OriginalString} were found.");
-                            }
-                        }
-                    }
-                    if (found != null)
-                    {
-                        if (node.Children == null) node.Children = new HashSet<DependencyNode>();
-                        node.Children.Add(found);
-                        parentless.Remove(found);
-                    }
-                    else
-                    {
-                        Console.WriteLine($"No library found for {dep.Id} with range {dep.VersionRange.OriginalString}.");
-                    }
+                    var version = builder.GetBestVersion(dep.LibraryRange.VersionRange);
+                    result.Dependencies.Add(new Model.PackageId(dep.Name, version));
                 }
             }
 
-            var result = new HashSet<DependencyNode>(parentless);
-
+            result.Packages = builder.GetPackageList();
             return result;
         }
 

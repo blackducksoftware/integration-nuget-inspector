@@ -12,6 +12,7 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Protocol.Core.v2;
 using NuGet.Versioning;
+using Model = Com.Blackducksoftware.Integration.Nuget.Inspector.Model;
 
 namespace Com.Blackducksoftware.Integration.Nuget
 {
@@ -20,37 +21,39 @@ namespace Com.Blackducksoftware.Integration.Nuget
     {
         
         private NugetSearchService nuget;
-        
+        private Model.PackageSetBuilder builder = new Model.PackageSetBuilder();
+
         public NugetTreeResolver(NugetSearchService service)
         {
             nuget = service;
         }
 
-        public HashSet<DependencyNode> ProcessAll(List<NugetDependency> packages)
+        public List<Model.PackageSet> GetPackageList()
         {
-            var result = new HashSet<DependencyNode>();
+            return builder.GetPackageList();
+        }
+
+        public void AddAll(List<NugetDependency> packages)
+        {
             foreach (NugetDependency package in packages)
             {
-                DependencyNode node = Build(package);
-                result.Add(node);
+                Add(package);
             }
-            return result;
         }
         
-        public DependencyNode Build (NugetDependency packageDependency, NugetFramework framework = null)
+        public void Add (NugetDependency packageDependency, NugetFramework framework = null)
         {
-            var node = new DependencyNode();
-            node.Artifact = packageDependency.Name;
-            node.Children = new HashSet<DependencyNode>();
 
             var package = nuget.FindBestPackage(packageDependency.Name, packageDependency.VersionRange);
             if (package == null) {
                 Console.WriteLine($"Unable to find package for '{packageDependency.Name}' version '{packageDependency.VersionRange}'");
-                node.Version = packageDependency.VersionRange.MinVersion.ToNormalizedString();
-                return node;
+                var version = packageDependency.VersionRange.MinVersion.ToNormalizedString();
+                builder.AddOrUpdatePackage(new Model.PackageId(packageDependency.Name, version));
+                return;
             }
 
-            node.Version = package.Identity.Version.ToNormalizedString();
+            var packageId = new Model.PackageId(packageDependency.Name, package.Identity.Version.ToNormalizedString());
+            HashSet<Model.PackageId> dependencies = new HashSet<Model.PackageId>();
 
             foreach (PackageDependencyGroup group in package.DependencySets)
             {
@@ -65,14 +68,14 @@ namespace Com.Blackducksoftware.Integration.Nuget
                             continue;
                         }
 
-                        DependencyNode childNode = Build(new NugetDependency(dependency.Id, dependency.VersionRange), framework);
-                        node.Children.Add(childNode);
-                    }
+                        dependencies.Add(new Model.PackageId(depPackage.Identity.Id, depPackage.Identity.Version.ToNormalizedString()));
 
+                        Add(new NugetDependency(dependency.Id, dependency.VersionRange), framework);
+                    }
                 }
             }
 
-            return node;
+            builder.AddOrUpdatePackage(packageId, dependencies);
 
         }
     }

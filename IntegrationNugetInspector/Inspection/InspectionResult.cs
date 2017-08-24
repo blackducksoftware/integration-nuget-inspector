@@ -17,7 +17,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public string ResultName;
         public string OutputDirectory;
         public ResultStatus Status;
-        public DependencyNode Node { get; set; }
+        public List<Model.Container> Containers = new List<Model.Container>();
         public Exception Exception;
         
     }

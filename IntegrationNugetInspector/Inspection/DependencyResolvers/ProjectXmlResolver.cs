@@ -12,16 +12,19 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
     {
 
         private string ProjectPath;
+        private NugetSearchService NugetSearchService;
 
-        public ProjectXmlResolver(string projectPath)
+        public ProjectXmlResolver(string projectPath, NugetSearchService nugetSearchService)
         {
             ProjectPath = projectPath;
+            NugetSearchService = nugetSearchService;
         }
 
         public DependencyResult Process()
         {
             var result = new DependencyResult();
-            result.Nodes = new HashSet<DependencyNode>();
+            var tree = new NugetTreeResolver(NugetSearchService);
+
             // .NET core default version
             result.ProjectVersion = "1.0.0";
 
@@ -73,7 +76,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
             {
                 foreach (XmlNode package in packagesNodes)
                 {
-                    DependencyNode childNode = new DependencyNode();
                     XmlAttributeCollection attributes = package.Attributes;
                     if (attributes != null)
                     {
@@ -81,13 +83,14 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
                         XmlAttribute version = attributes["Version"];
                         if (include != null && version != null)
                         {
-                            childNode.Artifact = include.Value;
-                            childNode.Version = version.Value;
-                            result.Nodes.Add(childNode);
+                            var dep = new NugetDependency(include.Value, NuGet.Versioning.VersionRange.Parse(version.Value));
+                            tree.Add(dep);
                         }
                     }
                 }
             }
+
+            result.Packages = tree.GetPackageList();
 
             return result;
         }

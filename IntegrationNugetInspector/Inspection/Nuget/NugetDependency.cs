@@ -12,6 +12,7 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Protocol.Core.v2;
 using NuGet.Versioning;
+using Model = Com.Blackducksoftware.Integration.Nuget.Inspector.Model;
 
 namespace Com.Blackducksoftware.Integration.Nuget
 {
@@ -34,12 +35,11 @@ namespace Com.Blackducksoftware.Integration.Nuget
             VersionRange = dependency.VersionRange;
         }
 
-        public DependencyNode ToDependencyNode()
+        public Model.PackageSet ToEmptyPackageSet()
         {
-            var node = new DependencyNode();
-            node.Artifact = Name;
-            node.Version = VersionRange.MinVersion.ToNormalizedString();
-            return node;
+            var packageSet = new Model.PackageSet();
+            packageSet.PackageId = new Model.PackageId(Name, VersionRange.MinVersion.ToNormalizedString());
+            return packageSet;
         }
     }
 }

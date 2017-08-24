@@ -61,7 +61,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     Status = InspectionResult.ResultStatus.Success,
                     ResultName = Options.SolutionName,
                     OutputDirectory = Options.OutputDirectory,
-                    Node = GetNode()
+                    Containers = new List<Model.Container>() { GetContainer() }
                 };
             }
             catch (Exception ex)
@@ -89,19 +89,18 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         
 
 
-        public DependencyNode GetNode()
+        public Model.Container GetContainer()
         {
-            DependencyNode solutionNode = new DependencyNode();
-            solutionNode.Artifact = Options.SolutionName;
-            solutionNode.SourcePath = Options.TargetPath;
-            solutionNode.Type = "Solution";
+            Model.Container solution = new Model.Container();
+            solution.Name = Options.SolutionName;
+            solution.SourcePath = Options.TargetPath;
+            solution.Type = "Solution";
             try
             {
                 List<ProjectFile> projectFiles = FindProjectFilesFromSolutionFile(Options.TargetPath, ExcludedProjectTypeGUIDs);
                 Console.WriteLine("Parsed Solution File");
                 if (projectFiles.Count > 0)
                 {
-                    HashSet<DependencyNode> children = new HashSet<DependencyNode>();
                     string solutionDirectory = Path.GetDirectoryName(Options.TargetPath);
                     Console.WriteLine("Solution directory: {0}", solutionDirectory);
                     foreach (ProjectFile project in projectFiles)
@@ -120,12 +119,11 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                         }, NugetService);
 
                         InspectionResult projectResult =  projectInspector.Inspect();
-                        if (projectResult != null && projectResult.Node != null)
+                        if (projectResult != null && projectResult.Containers != null)
                         {
-                            children.Add(projectResult.Node);
+                            solution.Children.AddRange(projectResult.Containers);
                         }
                     }
-                    solutionNode.Children = children;
                 }
                 else
                 {
@@ -146,7 +144,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 }
             }
             
-            return solutionNode;
+            return solution;
         }
 
         
@@ -175,7 +173,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                         }
                     }
                 }
-                Console.WriteLine("Black Duck I/O Generation Found {0} Project elements, processed {1} project elements for data", projectLines.Count(), projects.Count());
+                Console.WriteLine("Nuget Inspector found {0} project elements, processed {1} project elements for data", projectLines.Count(), projects.Count());
             }
             else
             {

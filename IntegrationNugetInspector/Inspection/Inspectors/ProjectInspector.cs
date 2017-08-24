@@ -98,7 +98,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     Status = InspectionResult.ResultStatus.Success,
                     ResultName = Options.ProjectName,
                     OutputDirectory = Options.OutputDirectory,
-                    Node = GetNode()
+                    Containers = new List<Model.Container> { GetContainer() }
                 };
             }
             catch (Exception ex)
@@ -126,7 +126,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
         }
 
-        public DependencyNode GetNode()
+        public Model.Container GetContainer()
         {
             if (IsExcluded())
             {
@@ -136,8 +136,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             else
             {
                 Console.WriteLine("Processing Project: {0}", Options.ProjectName);
-                DependencyNode projectNode = new DependencyNode();
-                projectNode.Artifact = Options.ProjectName;
+                Model.Container projectNode = new Model.Container();
+                projectNode.Name = Options.ProjectName;
                 projectNode.Version = Options.VersionName;
                 projectNode.SourcePath = Options.TargetPath;
                 projectNode.Type = "Project";
@@ -153,40 +153,46 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 {
                     var packagesConfigResolver = new PackagesConfigResolver(Options.PackagesConfigPath, NugetService);
                     var packagesConfigResult = packagesConfigResolver.Process();
-                    projectNode.Children = packagesConfigResult.Nodes;
+                    projectNode.Packages = packagesConfigResult.Packages;
+                    projectNode.Dependencies = packagesConfigResult.Dependencies;
                 }
                 else if (projectJsonLockExists)
                 {
                     var projectJsonLockResolver = new ProjectLockJsonResolver(Options.ProjectJsonLockPath);
                     var projectJsonLockResult = projectJsonLockResolver.Process();
-                    projectNode.Children = projectJsonLockResult.Nodes;
+                    projectNode.Packages = projectJsonLockResult.Packages;
+                    projectNode.Dependencies = projectJsonLockResult.Dependencies;
                 }
                 else if (projectAssetsJsonExists)
                 {
                     var projectAssetsJsonResolver = new ProjectAssetsJsonResolver(Options.ProjectAssetsJsonPath);
                     var projectAssetsJsonResult = projectAssetsJsonResolver.Process();
-                    projectNode.Children = projectAssetsJsonResult.Nodes;
+                    projectNode.Packages = projectAssetsJsonResult.Packages;
+                    projectNode.Dependencies = projectAssetsJsonResult.Dependencies;
                 }
                 else if (projectJsonExists)
                 {
                     var projectJsonResolver = new ProjectJsonResolver(Options.ProjectName, Options.ProjectJsonPath);
                     var projectJsonResult = projectJsonResolver.Process();
-                    projectNode.Children = projectJsonResult.Nodes;
+                    projectNode.Packages = projectJsonResult.Packages;
+                    projectNode.Dependencies = projectJsonResult.Dependencies;
                 }
                 else
                 {
-                    var referenceResolver = new ProjectReferenceResolver(Options.TargetPath);
+                    var referenceResolver = new ProjectReferenceResolver(Options.TargetPath, NugetService);
                     var projectReferencesResult = referenceResolver.Process();
                     if (projectReferencesResult.Success)
                     {
-                        projectNode.Children = projectReferencesResult.Nodes;
+                        projectNode.Packages = projectReferencesResult.Packages;
+                        projectNode.Dependencies = projectReferencesResult.Dependencies;
                     }
                     else
                     {
-                        var xmlResolver = new ProjectXmlResolver(Options.TargetPath);
+                        var xmlResolver = new ProjectXmlResolver(Options.TargetPath, NugetService);
                         var xmlResult = xmlResolver.Process();
                         projectNode.Version = xmlResult.ProjectVersion;
-                        projectNode.Children = xmlResult.Nodes;
+                        projectNode.Packages = xmlResult.Packages;
+                        projectNode.Dependencies = xmlResult.Dependencies;
                     }
                 }
 

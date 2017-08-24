@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Com.Blackducksoftware.Integration.Nuget.Inspector;
+using Model = Com.Blackducksoftware.Integration.Nuget.Inspector.Model;
 
 namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
 {
@@ -26,10 +27,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
 
             foreach (NuGet.LibraryModel.LibraryDependency package in packages)
             {
-                DependencyNode child = new DependencyNode();
-                child.Artifact = package.Name;
-                child.Version = package.LibraryRange.VersionRange.OriginalString;
-                result.Nodes.Add(child);
+                var set = new Model.PackageSet();
+                set.PackageId = new Model.PackageId(package.Name, package.LibraryRange.VersionRange.OriginalString);
+                result.Packages.Add(set);
+                result.Dependencies.Add(set.PackageId);
             }
             return result;
         }

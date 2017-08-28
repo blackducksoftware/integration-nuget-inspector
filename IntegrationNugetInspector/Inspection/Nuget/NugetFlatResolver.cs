@@ -25,7 +25,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
 
         private class ResolutionData
         {
-            public string Id;
+            public string Name;
             public NuGetVersion CurrentVersion;
             public VersionRange ExternalVersionRange = null;
             public Dictionary<string, VersionRange> Dependencies = new Dictionary<string, VersionRange>();
@@ -39,15 +39,15 @@ namespace Com.Blackducksoftware.Integration.Nuget
             nuget = service;
         }
 
-        private List<VersionRange> FindAllVersionRangesFor(string name)
+        private List<VersionRange> FindAllVersionRangesFor(string id)
         {
-            name = name.ToLower();
+            id = id.ToLower();
             List<VersionRange> result = new List<VersionRange>();
             foreach (var pkg in resolutionData.Values)
             {
                 foreach (var depPair in pkg.Dependencies)
                 {
-                    if (depPair.Key == name)
+                    if (depPair.Key == id)
                     {
                         result.Add(depPair.Value);
                     }
@@ -60,7 +60,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
         {
             foreach (NugetDependency package in packages)
             {
-                Add(package.Name, package.VersionRange, package.Framework);
+                Add(package.Name, package.Name, package.VersionRange, package.Framework);
             }
 
             var builder = new Model.PackageSetBuilder();
@@ -69,27 +69,34 @@ namespace Com.Blackducksoftware.Integration.Nuget
                 var deps = new HashSet<Model.PackageId>();
                 foreach(var dep in data.Dependencies.Keys)
                 {
-                    deps.Add(new Model.PackageId(dep, resolutionData[dep].CurrentVersion.ToNormalizedString()));
+                    if (!resolutionData.ContainsKey(dep))
+                    {
+                        throw new Exception($"Encountered a dependency but was unable to resolve a package for it: {dep}");
+                    }
+                    else
+                    {
+                        deps.Add(new Model.PackageId(resolutionData[dep].Name, resolutionData[dep].CurrentVersion.ToNormalizedString()));
+                    }
                 }
-                builder.AddOrUpdatePackage(new Model.PackageId(data.Id, data.CurrentVersion.ToNormalizedString()), deps);
+                builder.AddOrUpdatePackage(new Model.PackageId(data.Name, data.CurrentVersion.ToNormalizedString()), deps);
             }
             
             return builder.GetPackageList();
         }
 
-        public void Add(string name, VersionRange range, NugetFramework framework)
+        public void Add(string id, string name, VersionRange range, NugetFramework framework)
         {
-            name = name.ToLower();
-            Resolve(name, framework, range);
+            id = id.ToLower();
+            Resolve(id, name, framework, range);
         }
 
-        private void Resolve(string name, NugetFramework framework = null, VersionRange overrideRange = null)
+        private void Resolve(string id, string name, NugetFramework framework = null, VersionRange overrideRange = null)
         {
-            name = name.ToLower();
+            id = id.ToLower();
             ResolutionData data;
-            if (resolutionData.ContainsKey(name))
+            if (resolutionData.ContainsKey(id))
             {
-                data = resolutionData[name];
+                data = resolutionData[id];
                 if (overrideRange != null)
                 {
                     if (data.ExternalVersionRange == null)
@@ -106,23 +113,25 @@ namespace Com.Blackducksoftware.Integration.Nuget
             {
                 data = new ResolutionData();
                 data.ExternalVersionRange = overrideRange;
-                resolutionData[name] = data;
+                data.Name = name;
+                resolutionData[id] = data;
             }
 
-            var allVersions = FindAllVersionRangesFor(name);
+            var allVersions = FindAllVersionRangesFor(id);
             if (data.ExternalVersionRange != null)
             {
                 allVersions.Add(data.ExternalVersionRange);
             }
             var combo = VersionRange.CommonSubSet(allVersions);
-            var best = nuget.FindBestPackage(name, combo);
+            var best = nuget.FindBestPackage(id, combo);
 
             if (best == null)
             {
-                throw new Exception($"Unable to find package for '{name}' with range '{combo.ToString()}'. Likely a conflict exists in packages.config or the nuget metadata service configured incorrectly.");
+                throw new Exception($"Unable to find package for '{id}' with range '{combo.ToString()}'. Likely a conflict exists in packages.config or the nuget metadata service configured incorrectly.");
             }
 
-            data.Id = best.Identity.Id;
+            if (data.CurrentVersion == best.Identity.Version) return;
+            
             data.CurrentVersion = best.Identity.Version;
             data.Dependencies.Clear();
 
@@ -133,7 +142,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
                     foreach (PackageDependency dependency in group.Packages)
                     {
                         data.Dependencies.Add(dependency.Id.ToLower(), dependency.VersionRange);
-                        Resolve(dependency.Id, framework);
+                        Resolve(dependency.Id.ToLower(), dependency.Id, framework);
                     }
                 }
             }

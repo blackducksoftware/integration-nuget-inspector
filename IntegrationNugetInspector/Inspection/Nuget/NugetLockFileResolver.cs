@@ -53,7 +53,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
             {
                 foreach (var dep in framework.Dependencies)
                 {
-                    var version = builder.GetBestVersion(dep.LibraryRange.VersionRange);
+                    var version = builder.GetBestVersion(dep.Name, dep.LibraryRange.VersionRange);
                     result.Dependencies.Add(new Model.PackageId(dep.Name, version));
                 }
             }

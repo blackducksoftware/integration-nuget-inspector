@@ -90,7 +90,67 @@ namespace Com.Blackducksoftware.Integration.Nuget
             return list;
         }
 
-        public bool FrameworksMatch(PackageDependencyGroup framework1, NugetFramework framework2)
+        public IEnumerable<PackageDependency> PackagesForGroupsWithFramework(IEnumerable<PackageDependencyGroup> groups, NugetFramework framework)
+        {
+            if (framework == null || groups.Count() == 0)
+            {
+                return groups.SelectMany(group => group.Packages);
+            }
+
+            var anyDirectMatch = groups.Where(group => FrameworksMatch(group, framework));
+
+            if (anyDirectMatch.Count() > 0)
+            {
+                return anyDirectMatch.SelectMany(group => group.Packages);
+            }
+
+            var matchingNames = groups
+                .Where(group => group.TargetFramework.Framework == framework.Identifier);
+
+            if (matchingNames.Count() == 0)
+            {
+                Console.WriteLine($"No matching dependency groups with the given framework name were found {framework.Identifier}!");
+                return groups.SelectMany(group => group.Packages);
+            }
+
+            var matchingLessThanMajor = matchingNames
+                .Where(group => group.TargetFramework.Version.Major <= framework.Major);
+
+            if (matchingLessThanMajor.Count() == 0)
+            {
+                Console.WriteLine($"No matching dependency groups with the given framework and equal to or less major were found {framework.Identifier} Major {framework.Major}!");
+                return groups.SelectMany(group => group.Packages);
+            }
+
+            var maxMajor = matchingLessThanMajor.Max(group => group.TargetFramework.Version.Major);
+
+            var matchingMaxMajors = matchingNames
+                .Where(group => group.TargetFramework.Version.Major == maxMajor);
+
+            if (matchingMaxMajors.Count() == 0)
+            {
+                Console.WriteLine($"No matching dependency groups with the actual major were found {framework.Identifier} Major {framework.Major}!");
+                return matchingLessThanMajor.SelectMany(group => group.Packages);
+            }
+
+            var maxMinor = matchingMaxMajors.Max(group => group.TargetFramework.Version.Minor);
+
+            var maxingMaxMinors = matchingMaxMajors.Where(group => group.TargetFramework.Version.Minor == maxMinor);
+
+            if (maxingMaxMinors.Count() == 1) //expect exactly 1 - matching name, with max minor and major.
+            {
+                return maxingMaxMinors.SelectMany(group => group.Packages);
+            }
+            else
+            {
+                Console.WriteLine($"No matching framework with Minor {framework.Identifier} Minor {framework.Minor}!");
+                return groups.SelectMany(group => group.Packages);
+            }
+
+        }
+
+
+        private bool FrameworksMatch(PackageDependencyGroup framework1, NugetFramework framework2)
         {
             if (framework1.TargetFramework.IsAny)
             {

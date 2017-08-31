@@ -63,7 +63,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
                 string componentName = packageRef.Id;
                 var version = new NuGet.Versioning.NuGetVersion(packageRef.Version.Version);
                 var versionRange = new NuGet.Versioning.VersionRange(version, true, version, true);
-                var framework = new NugetFramework(packageRef.TargetFramework.Version.Major, packageRef.TargetFramework.Version.Minor);
+                var framework = new NugetFramework(packageRef.TargetFramework.Identifier, packageRef.TargetFramework.Version.Major, packageRef.TargetFramework.Version.Minor);
 
                 var dep = new NugetDependency(componentName, versionRange, framework);
                 dependencies.Add(dep);

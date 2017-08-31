@@ -19,7 +19,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
     //Simply builds a tree of dependency nodes from a package using best guess of the correct versions.
     public class NugetTreeResolver
     {
-        
+
         private NugetSearchService nuget;
         private Model.PackageSetBuilder builder = new Model.PackageSetBuilder();
 
@@ -40,10 +40,9 @@ namespace Com.Blackducksoftware.Integration.Nuget
                 Add(package);
             }
         }
-        
-        public void Add (NugetDependency packageDependency, NugetFramework framework = null)
-        {
 
+        public void Add(NugetDependency packageDependency)
+        {
             var package = nuget.FindBestPackage(packageDependency.Name, packageDependency.VersionRange);
             if (package == null) {
                 Console.WriteLine($"Unable to find package for '{packageDependency.Name}' version '{packageDependency.VersionRange}'");
@@ -55,26 +54,36 @@ namespace Com.Blackducksoftware.Integration.Nuget
             var packageId = new Model.PackageId(packageDependency.Name, package.Identity.Version.ToNormalizedString());
             HashSet<Model.PackageId> dependencies = new HashSet<Model.PackageId>();
 
-            foreach (PackageDependencyGroup group in package.DependencySets)
+            var packages = nuget.PackagesForGroupsWithFramework(package.DependencySets, packageDependency.Framework);
+            
+            foreach (PackageDependency dependency in packages)
             {
-                if (framework == null || nuget.FrameworksMatch(group, framework))
+                var bestExisting = builder.GetBestVersion(dependency.Id, dependency.VersionRange);
+                if (bestExisting != null)
                 {
-                    foreach (PackageDependency dependency in group.Packages)
+                    var id = new Model.PackageId(dependency.Id, bestExisting);
+                    dependencies.Add(id);
+                }
+                else
+                {
+                    var depPackage = nuget.FindBestPackage(dependency.Id, dependency.VersionRange);
+                    if (depPackage == null)
                     {
-                        var depPackage = nuget.FindBestPackage(dependency.Id, dependency.VersionRange);
-                        if (depPackage == null)
-                        {
-                            Console.WriteLine($"Unable to find package for '{dependency.Id}' version '{dependency.VersionRange}'");
-                            continue;
-                        }
+                        Console.WriteLine($"Unable to find package for '{dependency.Id}' version '{dependency.VersionRange}'");
+                        continue;
+                    }
 
-                        dependencies.Add(new Model.PackageId(depPackage.Identity.Id, depPackage.Identity.Version.ToNormalizedString()));
+                    var id = new Model.PackageId(depPackage.Identity.Id, depPackage.Identity.Version.ToNormalizedString());
+                    dependencies.Add(id);
 
-                        Add(new NugetDependency(dependency.Id, dependency.VersionRange), framework);
+                    if (!builder.DoesPackageExist(id))
+                    {
+                        Add(new NugetDependency(dependency.Id, dependency.VersionRange, packageDependency.Framework));
                     }
                 }
             }
-
+            
+        
             builder.AddOrUpdatePackage(packageId, dependencies);
 
         }

@@ -8,11 +8,13 @@ namespace Com.Blackducksoftware.Integration.Nuget
 {
     public class NugetFramework
     {
+        public string Identifier;
         public int Major;
         public int Minor;
 
-        public NugetFramework(int major, int minor)
+        public NugetFramework(string id, int major, int minor)
         {
+            Identifier = id;
             Major = major;
             Minor = minor;
         }

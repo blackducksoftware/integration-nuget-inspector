@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>IntegrationNugetInspector</id>
-    <version>2.0.1</version>
+    <version>2.1.0</version>
     <title>IntegrationNugetInspector</title>
     <authors>Black Duck Software</authors>
     <owners>Black Duck Software</owners>
@@ -11,7 +11,7 @@
     <iconUrl>https://avatars2.githubusercontent.com/u/431461?v=3&amp;s=64</iconUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <description>Executable to generate Black Duck I/O output for use with Hub Pack-Man</description>
-    <releaseNotes>Improved packages.config performance and adding better case support.</releaseNotes>
+    <releaseNotes>Improved performance when building a tree, and adding better framework support.</releaseNotes>
     <copyright>Copyright © 2017 Black Duck Software</copyright>
     <tags>BlackDuck hub bdio open source security</tags>
     <dependencies>

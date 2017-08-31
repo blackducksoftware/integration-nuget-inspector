@@ -127,7 +127,9 @@ namespace Com.Blackducksoftware.Integration.Nuget
 
             if (best == null)
             {
-                throw new Exception($"Unable to find package for '{id}' with range '{combo.ToString()}'. Likely a conflict exists in packages.config or the nuget metadata service configured incorrectly.");
+                Console.WriteLine($"Unable to find package for '{id}' with range '{combo.ToString()}'. Likely a conflict exists in packages.config or the nuget metadata service configured incorrectly.");
+                if (data.CurrentVersion == null) data.CurrentVersion = combo.MinVersion;
+                return;
             }
 
             if (data.CurrentVersion == best.Identity.Version) return;
@@ -135,18 +137,20 @@ namespace Com.Blackducksoftware.Integration.Nuget
             data.CurrentVersion = best.Identity.Version;
             data.Dependencies.Clear();
 
-            foreach (PackageDependencyGroup group in best.DependencySets)
+            var packages = nuget.PackagesForGroupsWithFramework(best.DependencySets, framework);
+            foreach (PackageDependency dependency in packages)
             {
-                if (framework == null || nuget.FrameworksMatch(group, framework))
+                if (!data.Dependencies.ContainsKey(dependency.Id.ToLower()))
                 {
-                    foreach (PackageDependency dependency in group.Packages)
-                    {
-                        data.Dependencies.Add(dependency.Id.ToLower(), dependency.VersionRange);
-                        Resolve(dependency.Id.ToLower(), dependency.Id, framework);
-                    }
+                    data.Dependencies.Add(dependency.Id.ToLower(), dependency.VersionRange);
+                    Resolve(dependency.Id.ToLower(), dependency.Id, framework);
+                }
+                else
+                {
+                    Console.WriteLine("Duplicate!");
                 }
             }
-
+            
         }
 
     }

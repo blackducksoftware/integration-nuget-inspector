@@ -9,7 +9,13 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.Model
     public class PackageSetBuilder
     {
         private Dictionary<PackageId, PackageSet> packageSets = new Dictionary<PackageId, PackageSet>();
+        private Dictionary<PackageId, VersionPair> versions = new Dictionary<PackageId, VersionPair>();
 
+
+        public bool DoesPackageExist(PackageId id)
+        {
+            return packageSets.ContainsKey(id);
+        }
 
         public PackageSet GetOrCreatePackageSet(PackageId package)
         {
@@ -24,6 +30,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.Model
                 set.PackageId = package;
                 set.Dependencies = new HashSet<PackageId>();
                 packageSets[package] = set;
+
+                NuGet.Versioning.NuGetVersion version = null;
+                NuGet.Versioning.NuGetVersion.TryParse(package.Version, out version);
+                versions[package] = new VersionPair() { rawVersion = package.Version, version = version };
                 return set;
             }
         }
@@ -55,19 +65,19 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector.Model
             public string rawVersion;
             public NuGet.Versioning.NuGetVersion version;
         }
-        public string GetBestVersion(NuGet.Versioning.VersionRange range)
+
+        public string GetBestVersion(string name, NuGet.Versioning.VersionRange range)
         {
-            var versions = packageSets.Select(pkg =>
+            var allVersions = versions.Keys.Where(key => key.Name == name).Select(key => versions[key]);
+            
+            var best = range.FindBestMatch(allVersions.Select(ver => ver.version));
+
+            foreach (var pair in versions)
             {
-                NuGet.Versioning.NuGetVersion version = null;
-                NuGet.Versioning.NuGetVersion.TryParse(pkg.Key.Version, out version);
-                return new VersionPair() { rawVersion = pkg.Key.Version, version = version };
+                if (pair.Key.Name == name && pair.Value.version == best) return pair.Key.Version;
+            }
 
-            });
-
-            var best = range.FindBestMatch(versions.Select(ver => ver.version));
-
-            return versions.Where(ver => ver.version == best).Select(ver => ver.rawVersion).FirstOrDefault();
+            return null;
         }
 
     }

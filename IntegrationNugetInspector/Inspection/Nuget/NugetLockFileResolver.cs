@@ -49,13 +49,10 @@ namespace Com.Blackducksoftware.Integration.Nuget
                 
             }
 
-            foreach (var framework in LockFile.PackageSpec.TargetFrameworks)
+            foreach (var dep in LockFile.PackageSpec.Dependencies)
             {
-                foreach (var dep in framework.Dependencies)
-                {
-                    var version = builder.GetBestVersion(dep.Name, dep.LibraryRange.VersionRange);
-                    result.Dependencies.Add(new Model.PackageId(dep.Name, version));
-                }
+                var version = builder.GetBestVersion(dep.Name, dep.LibraryRange.VersionRange);
+                result.Dependencies.Add(new Model.PackageId(dep.Name, version));
             }
 
             result.Packages = builder.GetPackageList();

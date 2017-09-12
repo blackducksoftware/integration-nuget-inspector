@@ -119,7 +119,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
             if (matchingLessThanMajor.Count() == 0)
             {
                 Console.WriteLine($"No matching dependency groups with the given framework and equal to or less major were found {framework.Identifier} Major {framework.Major}!");
-                return groups.SelectMany(group => group.Packages);
+                return matchingNames.SelectMany(group => group.Packages); //we know there was at least one matching name
             }
 
             var maxMajor = matchingLessThanMajor.Max(group => group.TargetFramework.Version.Major);
@@ -130,7 +130,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
             if (matchingMaxMajors.Count() == 0)
             {
                 Console.WriteLine($"No matching dependency groups with the actual major were found {framework.Identifier} Major {framework.Major}!");
-                return matchingLessThanMajor.SelectMany(group => group.Packages);
+                return matchingLessThanMajor.SelectMany(group => group.Packages);//we know there was at keast one matching framework name
             }
 
             var maxMinor = matchingMaxMajors.Max(group => group.TargetFramework.Version.Minor);
@@ -144,11 +144,10 @@ namespace Com.Blackducksoftware.Integration.Nuget
             else
             {
                 Console.WriteLine($"No matching framework with Minor {framework.Identifier} Minor {framework.Minor}!");
-                return groups.SelectMany(group => group.Packages);
+                return matchingMaxMajors.SelectMany(group => group.Packages); //we know there was at least 1 matching major
             }
 
         }
-
 
         private bool FrameworksMatch(PackageDependencyGroup framework1, NugetFramework framework2)
         {

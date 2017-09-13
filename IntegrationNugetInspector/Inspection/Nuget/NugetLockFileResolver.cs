@@ -49,10 +49,31 @@ namespace Com.Blackducksoftware.Integration.Nuget
                 
             }
 
-            foreach (var dep in LockFile.PackageSpec.Dependencies)
+            
+
+            if (LockFile.PackageSpec.Dependencies.Count != 0)
             {
-                var version = builder.GetBestVersion(dep.Name, dep.LibraryRange.VersionRange);
-                result.Dependencies.Add(new Model.PackageId(dep.Name, version));
+                foreach (var dep in LockFile.PackageSpec.Dependencies)
+                {
+                    var version = builder.GetBestVersion(dep.Name, dep.LibraryRange.VersionRange);
+                    result.Dependencies.Add(new Model.PackageId(dep.Name, version));
+                }
+            }
+            else
+            {
+                foreach (var framework in LockFile.PackageSpec.TargetFrameworks)
+                {
+                    foreach (var dep in framework.Dependencies)
+                    {
+                        var version = builder.GetBestVersion(dep.Name, dep.LibraryRange.VersionRange);
+                        result.Dependencies.Add(new Model.PackageId(dep.Name, version));
+                    }
+                }
+            }
+
+            if (result.Dependencies.Count == 0)
+            {
+                Console.WriteLine("Found no dependencies for lock file: " + LockFile.Path);
             }
 
             result.Packages = builder.GetPackageList();

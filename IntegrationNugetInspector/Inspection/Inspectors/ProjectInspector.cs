@@ -93,12 +93,18 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
             try
             {
+                Model.Container container = GetContainer();
+                List<Model.Container> containers = null;
+                if (container != null)
+                {
+                    containers = new List<Model.Container> { container };
+                }
                 return new InspectionResult()
                 {
                     Status = InspectionResult.ResultStatus.Success,
                     ResultName = Options.ProjectName,
                     OutputDirectory = Options.OutputDirectory,
-                    Containers = new List<Model.Container> { GetContainer() }
+                    Containers = containers
                 };
             }
             catch (Exception ex)

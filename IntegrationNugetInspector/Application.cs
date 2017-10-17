@@ -26,6 +26,7 @@ using System.Collections.Specialized;
 using System.Configuration;
 using System.IO;
 
+//Need both Microsoft.Build.Utilities.Core and Microsoft.Build or you get an exception https://github.com/Microsoft/msbuild/issues/1889
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
     class Application
@@ -35,6 +36,13 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         {
             try
             {
+                Environment.SetEnvironmentVariable("VSINSTALLDIR", @"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community");
+                Environment.SetEnvironmentVariable("VisualStudioVersion", @"15.0");
+                var projectCollection = new Microsoft.Build.Evaluation.ProjectCollection();
+                if (projectCollection.GetToolset("15.0") == null)
+                {
+                    throw new Exception("MSBuild 15 not found");
+                }
                 var dispatch = new InspectorDispatch();
                 var runner = new CommandLineRunner(dispatch);
                 runner.Execute(args);

@@ -147,7 +147,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
                 }
                 else
                 {
-                    Console.WriteLine("Duplicate!");
+                    //Console.WriteLine("Duplicate!");
                 }
             }
             

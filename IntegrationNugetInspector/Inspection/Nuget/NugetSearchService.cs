@@ -12,13 +12,14 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Protocol.Core.v2;
 using NuGet.Versioning;
-
+using NuGet.Frameworks;
 namespace Com.Blackducksoftware.Integration.Nuget
 {
    
     public class NugetSearchService
     {
         List<PackageMetadataResource> MetadataResourceList;
+        private CompatibilityProvider frameworkCompatibilityProvider = new CompatibilityProvider(DefaultFrameworkNameProvider.Instance);
 
         public NugetSearchService(string packagesRepoUrl)
         {
@@ -90,63 +91,26 @@ namespace Com.Blackducksoftware.Integration.Nuget
             return list;
         }
 
-        public IEnumerable<PackageDependency> PackagesForGroupsWithFramework(IEnumerable<PackageDependencyGroup> groups, NugetFramework framework)
+        public IEnumerable<PackageDependency> DependenciesFromGroupsForFramework(IEnumerable<PackageDependencyGroup> groups, NuGet.Frameworks.NuGetFramework framework)
         {
-            if (framework == null || groups.Count() == 0)
+            var matchingGroups = groups.Where(group => frameworkCompatibilityProvider.IsCompatible(framework, group.TargetFramework)); // FrameworksMatch(group, framework));
+            var packages = matchingGroups.SelectMany(group => group.Packages);
+            if (groups.Count() >0 && matchingGroups.Count() == 0)
             {
-                return groups.SelectMany(group => group.Packages);
+                String frameworkList = "";
+                Boolean first = true;
+                foreach (var guy in groups)
+                {
+                    frameworkList += guy.TargetFramework.ToString();
+                    if (!first)
+                    {
+                        frameworkList += " , "; 
+                    }
+                    first = false;
+                }
+                Console.Write("Info: Looking for framework {0} but had {1}, assuming no dependencies.", framework.ToString(), frameworkList);
             }
-
-            var anyDirectMatch = groups.Where(group => FrameworksMatch(group, framework));
-
-            if (anyDirectMatch.Count() > 0)
-            {
-                return anyDirectMatch.SelectMany(group => group.Packages);
-            }
-
-            var matchingNames = groups
-                .Where(group => group.TargetFramework.Framework == framework.Identifier);
-
-            if (matchingNames.Count() == 0)
-            {
-                Console.WriteLine($"No matching dependency groups with the given framework name were found {framework.Identifier}!");
-                return groups.SelectMany(group => group.Packages);
-            }
-
-            var matchingLessThanMajor = matchingNames
-                .Where(group => group.TargetFramework.Version.Major <= framework.Major);
-
-            if (matchingLessThanMajor.Count() == 0)
-            {
-                Console.WriteLine($"No matching dependency groups with the given framework and equal to or less major were found {framework.Identifier} Major {framework.Major}!");
-                return matchingNames.SelectMany(group => group.Packages); //we know there was at least one matching name
-            }
-
-            var maxMajor = matchingLessThanMajor.Max(group => group.TargetFramework.Version.Major);
-
-            var matchingMaxMajors = matchingNames
-                .Where(group => group.TargetFramework.Version.Major == maxMajor);
-
-            if (matchingMaxMajors.Count() == 0)
-            {
-                Console.WriteLine($"No matching dependency groups with the actual major were found {framework.Identifier} Major {framework.Major}!");
-                return matchingLessThanMajor.SelectMany(group => group.Packages);//we know there was at keast one matching framework name
-            }
-
-            var maxMinor = matchingMaxMajors.Max(group => group.TargetFramework.Version.Minor);
-
-            var maxingMaxMinors = matchingMaxMajors.Where(group => group.TargetFramework.Version.Minor == maxMinor);
-
-            if (maxingMaxMinors.Count() == 1) //expect exactly 1 - matching name, with max minor and major.
-            {
-                return maxingMaxMinors.SelectMany(group => group.Packages);
-            }
-            else
-            {
-                Console.WriteLine($"No matching framework with Minor {framework.Identifier} Minor {framework.Minor}!");
-                return matchingMaxMajors.SelectMany(group => group.Packages); //we know there was at least 1 matching major
-            }
-
+            return packages;
         }
 
         private bool FrameworksMatch(PackageDependencyGroup framework1, NugetFramework framework2)

@@ -54,7 +54,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
             var packageId = new Model.PackageId(packageDependency.Name, package.Identity.Version.ToNormalizedString());
             HashSet<Model.PackageId> dependencies = new HashSet<Model.PackageId>();
 
-            var packages = nuget.PackagesForGroupsWithFramework(package.DependencySets, packageDependency.Framework);
+            var packages = nuget.DependenciesFromGroupsForFramework(package.DependencySets, packageDependency.Framework);
             
             foreach (PackageDependency dependency in packages)
             {

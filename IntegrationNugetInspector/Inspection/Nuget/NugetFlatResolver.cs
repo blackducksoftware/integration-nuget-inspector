@@ -84,13 +84,13 @@ namespace Com.Blackducksoftware.Integration.Nuget
             return builder.GetPackageList();
         }
 
-        public void Add(string id, string name, VersionRange range, NugetFramework framework)
+        public void Add(string id, string name, VersionRange range, NuGet.Frameworks.NuGetFramework framework)
         {
             id = id.ToLower();
             Resolve(id, name, framework, range);
         }
 
-        private void Resolve(string id, string name, NugetFramework framework = null, VersionRange overrideRange = null)
+        private void Resolve(string id, string name, NuGet.Frameworks.NuGetFramework framework = null, VersionRange overrideRange = null)
         {
             id = id.ToLower();
             ResolutionData data;
@@ -137,17 +137,13 @@ namespace Com.Blackducksoftware.Integration.Nuget
             data.CurrentVersion = best.Identity.Version;
             data.Dependencies.Clear();
 
-            var packages = nuget.PackagesForGroupsWithFramework(best.DependencySets, framework);
+            var packages = nuget.DependenciesFromGroupsForFramework(best.DependencySets, framework);
             foreach (PackageDependency dependency in packages)
             {
                 if (!data.Dependencies.ContainsKey(dependency.Id.ToLower()))
                 {
                     data.Dependencies.Add(dependency.Id.ToLower(), dependency.VersionRange);
                     Resolve(dependency.Id.ToLower(), dependency.Id, framework);
-                }
-                else
-                {
-                    //Console.WriteLine("Duplicate!");
                 }
             }
             

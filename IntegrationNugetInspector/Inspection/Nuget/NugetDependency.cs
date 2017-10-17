@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Com.Blackducksoftware.Integration.Nuget.Inspector;
 using NuGet.Configuration;
+using NuGet.Frameworks;
 using NuGet.Packaging;
 using NuGet.Packaging.Core;
 using NuGet.Protocol;
@@ -20,9 +21,9 @@ namespace Com.Blackducksoftware.Integration.Nuget
     {
         public string Name;
         public VersionRange VersionRange;
-        public NugetFramework Framework = null;
+        public NuGetFramework Framework = null;
 
-        public NugetDependency(string name, VersionRange versionRange, NugetFramework framework = null)
+        public NugetDependency(string name, VersionRange versionRange, NuGetFramework framework = null)
         {
             Name = name;
             VersionRange = versionRange;

@@ -18,7 +18,8 @@ namespace Com.Blackducksoftware.Integration.Nuget
    
     public class NugetSearchService
     {
-        List<PackageMetadataResource> MetadataResourceList;
+        List<PackageMetadataResource> MetadataResourceList = new List<PackageMetadataResource>();
+        List<DependencyInfoResource> DependencyInfoResourceList = new List<DependencyInfoResource>();
         private CompatibilityProvider frameworkCompatibilityProvider = new CompatibilityProvider(DefaultFrameworkNameProvider.Instance);
 
         public NugetSearchService(string packagesRepoUrl)
@@ -26,7 +27,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
             List<Lazy<INuGetResourceProvider>> providers = new List<Lazy<INuGetResourceProvider>>();
             providers.AddRange(Repository.Provider.GetCoreV3());  // Add v3 API support
             providers.AddRange(Repository.Provider.GetCoreV2());  // Add v2 API support
-            MetadataResourceList = CreateMetaDataResourceList(providers, packagesRepoUrl);
+            CreateResourceLists(providers, packagesRepoUrl);
         }
 
         public IPackageSearchMetadata FindBestPackage(String id, VersionRange versionRange)
@@ -62,9 +63,8 @@ namespace Com.Blackducksoftware.Integration.Nuget
             return null;
         }
        
-        private List<PackageMetadataResource> CreateMetaDataResourceList(List<Lazy<INuGetResourceProvider>> providers, string packagesRepoUrl)
+        private void CreateResourceLists(List<Lazy<INuGetResourceProvider>> providers, string packagesRepoUrl)
         {
-            List<PackageMetadataResource> list = new List<PackageMetadataResource>();
             string[] splitRepoUrls = packagesRepoUrl.Split(new char[] { ',' });
             foreach (string repoUrl in splitRepoUrls)
             {
@@ -76,7 +76,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
                     try
                     {
                         PackageMetadataResource packageMetadataResource = sourceRepository.GetResource<PackageMetadataResource>();
-                        list.Add(packageMetadataResource);
+                        MetadataResourceList.Add(packageMetadataResource);
                     }catch (Exception e)
                     {
                         Console.WriteLine("Error loading NuGet Package Meta Data Resource resoure for url: " + url);
@@ -85,32 +85,44 @@ namespace Com.Blackducksoftware.Integration.Nuget
                             Console.WriteLine(e.InnerException.Message);
                         }
                     }
+                    try
+                    {
+                        DependencyInfoResource dependencyInfoResource = sourceRepository.GetResource<DependencyInfoResource>();
+                        DependencyInfoResourceList.Add(dependencyInfoResource);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error loading NuGet Dependency Resource resoure for url: " + url);
+                        if (e.InnerException != null)
+                        {
+                            Console.WriteLine(e.InnerException.Message);
+                        }
+                    }
                 }
             }
 
-            return list;
         }
 
-        public IEnumerable<PackageDependency> DependenciesFromGroupsForFramework(IEnumerable<PackageDependencyGroup> groups, NuGet.Frameworks.NuGetFramework framework)
+        public IEnumerable<PackageDependency> DependenciesForPackage(PackageIdentity identity, NuGet.Frameworks.NuGetFramework framework)
         {
-            var matchingGroups = groups.Where(group => frameworkCompatibilityProvider.IsCompatible(framework, group.TargetFramework)); // FrameworksMatch(group, framework));
-            var packages = matchingGroups.SelectMany(group => group.Packages);
-            if (groups.Count() >0 && matchingGroups.Count() == 0)
+            foreach (DependencyInfoResource dependencyInfoResource in DependencyInfoResourceList)
             {
-                String frameworkList = "";
-                Boolean first = true;
-                foreach (var guy in groups)
+                try
                 {
-                    frameworkList += guy.TargetFramework.ToString();
-                    if (!first)
-                    {
-                        frameworkList += " , "; 
-                    }
-                    first = false;
+                    var infoTask = dependencyInfoResource.ResolvePackage(identity, framework, log: new Logger(), token: CancellationToken.None);
+                    var result = infoTask.Result;
+                    return result.Dependencies;
                 }
-                Console.Write("Info: Looking for framework {0} but had {1}, assuming no dependencies.", framework.ToString(), frameworkList);
+                catch (Exception e)
+                {
+                    Console.WriteLine("A dependency resource was unable to load for package: " + identity);
+                    if (e.InnerException != null)
+                    {
+                        Console.WriteLine(e.InnerException.Message);
+                    }
+                }
             }
-            return packages;
+            return new List<PackageDependency>();
         }
 
         private bool FrameworksMatch(PackageDependencyGroup framework1, NugetFramework framework2)

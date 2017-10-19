@@ -136,8 +136,8 @@ namespace Com.Blackducksoftware.Integration.Nuget
             
             data.CurrentVersion = best.Identity.Version;
             data.Dependencies.Clear();
-
-            var packages = nuget.DependenciesFromGroupsForFramework(best.DependencySets, framework);
+            
+            var packages = nuget.DependenciesForPackage(best.Identity, framework);
             foreach (PackageDependency dependency in packages)
             {
                 if (!data.Dependencies.ContainsKey(dependency.Id.ToLower()))

@@ -12,6 +12,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public const string PackagesRepoUrl = "packages_repo_url";
         public const string OutputDirectory = "output_directory";
         public const string ExcludedModules = "excluded_modules";
+        public const string IncludedModules = "included_modules";
         public const string IgnoreFailures = "ignore_failure";
     }
 }

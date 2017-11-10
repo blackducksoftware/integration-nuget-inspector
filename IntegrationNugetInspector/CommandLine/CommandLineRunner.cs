@@ -25,6 +25,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         [CommandLineArg(CommandLineArgKeys.ExcludedModules, "The names of the projects in a solution to exclude from dependency node generation.")]
         public string ExcludedModules = "";
 
+        [AppConfigArg(AppConfigKeys.IncludedModules)]
+        [CommandLineArg(CommandLineArgKeys.IncludedModules, "The names of the projects in a solution to include from dependency node generation.")]
+        public string IncludedModules = "";
+
         [AppConfigArg(AppConfigKeys.IgnoreFailures)]
         [CommandLineArg(CommandLineArgKeys.IgnoreFailures, "If true log the error but do not throw an exception.")]
         public string IgnoreFailures = "";
@@ -42,6 +46,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             TargetPath = String.IsNullOrEmpty(overide.TargetPath) ? this.TargetPath : overide.TargetPath;
             OutputDirectory = String.IsNullOrEmpty(overide.OutputDirectory) ? this.OutputDirectory : overide.OutputDirectory;
             ExcludedModules = String.IsNullOrEmpty(overide.ExcludedModules) ? this.ExcludedModules : overide.ExcludedModules;
+            IncludedModules = String.IsNullOrEmpty(overide.IncludedModules) ? this.IncludedModules : overide.IncludedModules;
             IgnoreFailures = String.IsNullOrEmpty(overide.IgnoreFailures) ? this.IgnoreFailures : overide.IgnoreFailures;
             PackagesRepoUrl = String.IsNullOrEmpty(overide.PackagesRepoUrl) ? this.PackagesRepoUrl : overide.PackagesRepoUrl;
         }
@@ -137,6 +142,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             InspectionOptions opts = new InspectionOptions()
             {
                 ExcludedModules = options.ExcludedModules,
+                IncludedModules = options.IncludedModules,
                 IgnoreFailure = options.IgnoreFailures == "true",
                 OutputDirectory = options.OutputDirectory,
                 PackagesRepoUrl = options.PackagesRepoUrl,
@@ -183,6 +189,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.AppSettingsFile, options.AppSettingsFile);
             Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.TargetPath, options.TargetPath);
             Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.OutputDirectory, options.OutputDirectory);
+            Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.IncludedModules, options.IncludedModules);
             Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.ExcludedModules, options.ExcludedModules);
             Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.IgnoreFailures, options.IgnoreFailures);
             Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.PackagesRepoUrl, options.PackagesRepoUrl);

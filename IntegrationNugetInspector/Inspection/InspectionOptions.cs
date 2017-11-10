@@ -14,6 +14,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public string PackagesRepoUrl { get; set; } = "";
         public string OutputDirectory { get; set; } = "";
         public string ExcludedModules { get; set; } = "";
+        public string IncludedModules { get; set; } = "";
         public bool IgnoreFailure { get; set; } = false;
 
     }

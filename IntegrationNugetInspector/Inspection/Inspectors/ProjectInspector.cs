@@ -240,11 +240,21 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public bool IsExcluded()
         {
 
-            if (String.IsNullOrWhiteSpace(Options.ExcludedModules))
+            if (String.IsNullOrWhiteSpace(Options.IncludedModules) && String.IsNullOrWhiteSpace(Options.ExcludedModules))
             {
                 return false;
             }
-            else
+            else if(!String.IsNullOrWhiteSpace(Options.IncludedModules))
+            {
+                ISet<string> includedSet = new HashSet<string>();
+                string[] projectNameArray = Options.IncludedModules.Split(new char[] { ',' });
+                foreach (string projectName in projectNameArray)
+                {
+                    includedSet.Add(projectName.Trim());
+                }
+                return !includedSet.Contains(Options.ProjectName.Trim());
+            }
+            else //ExcludedModules
             {
                 ISet<string> excludedSet = new HashSet<string>();
                 string[] projectNameArray = Options.ExcludedModules.Split(new char[] { ',' });

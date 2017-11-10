@@ -13,6 +13,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public const string PackagesRepoUrl = AppConfigKeys.PackagesRepoUrl;
         public const string OutputDirectory = AppConfigKeys.OutputDirectory;
         public const string ExcludedModules = AppConfigKeys.ExcludedModules;
+        public const string IncludedModules = AppConfigKeys.IncludedModules;
         public const string IgnoreFailures = AppConfigKeys.IgnoreFailures;
     }
 }

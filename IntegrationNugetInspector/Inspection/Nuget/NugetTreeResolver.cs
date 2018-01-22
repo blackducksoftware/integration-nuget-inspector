@@ -45,8 +45,8 @@ namespace Com.Blackducksoftware.Integration.Nuget
         {
             var package = nuget.FindBestPackage(packageDependency.Name, packageDependency.VersionRange);
             if (package == null) {
-                Console.WriteLine($"Unable to find package for '{packageDependency.Name}' version '{packageDependency.VersionRange}'");
                 var version = packageDependency.VersionRange.MinVersion.ToNormalizedString();
+                Console.WriteLine($"Nuget was unable to find the package '{packageDependency.Name}' with version range '{packageDependency.VersionRange}', assuming it is using version '{version}'");
                 builder.AddOrUpdatePackage(new Model.PackageId(packageDependency.Name, version));
                 return;
             }

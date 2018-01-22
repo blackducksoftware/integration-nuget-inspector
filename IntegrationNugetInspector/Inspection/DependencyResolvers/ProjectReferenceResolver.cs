@@ -33,10 +33,27 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
                 {
                     if (reference.Xml != null && !String.IsNullOrWhiteSpace(reference.Xml.Include) && reference.Xml.Include.Contains("Version"))
                     {
+
                         string packageInfo = reference.Xml.Include;
 
                         var artifact = packageInfo.Substring(0, packageInfo.IndexOf(","));
-                        string version = packageInfo.Substring(packageInfo.IndexOf("Version=") + 8);
+
+                        string versionKey = "Version=";
+                        int versionKeyIndex = packageInfo.IndexOf(versionKey);
+                        int versionStartIndex = versionKeyIndex + versionKey.Length;
+                        string packageInfoAfterVersionKey = packageInfo.Substring(versionStartIndex);
+
+                        string seapirater = ",";
+                        string version; 
+                        if (packageInfoAfterVersionKey.Contains(seapirater))
+                        {
+                            int firstSeapirater = packageInfoAfterVersionKey.IndexOf(seapirater);
+                            version = packageInfoAfterVersionKey.Substring(0, firstSeapirater);
+                        }
+                        else
+                        {
+                            version = packageInfoAfterVersionKey;
+                        }
 
                         var dep = new NugetDependency(artifact, NuGet.Versioning.VersionRange.Parse(version));
                         deps.Add(dep);

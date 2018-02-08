@@ -12,12 +12,57 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
     //Given a generic InspectionOptions, InspectorDispatch is responsible for instantiating the correct Inspector (Project or Solution)
     class InspectorDispatch
     {
-        
+        List<String> SupportedProjectPatterns = new List<String> { 
+            //C#
+            "*.csproj",
+            //F#
+            "*.fsproj",
+            //VB
+            "*.vbproj",
+            //Azure Stream Analytics
+            "*.asaproj",
+            //Docker Compose
+            "*.dcproj",
+            //Shared Projects
+            "*.shproj",
+            //Cloud Computing
+            "*.ccproj",
+            //Fabric Application
+            "*.sfproj",
+            //Node.js
+            "*.njsproj",
+            //VC++
+            "*.vcxproj",
+            //VC++
+            "*.vcproj",
+            //.NET Core
+            "*.xproj",
+            //Python
+            "*.pyproj",
+            //Hive
+            "*.hiveproj",
+            //Pig
+            "*.pigproj",
+            //JavaScript
+            "*.jsproj",
+            //U-SQL
+            "*.usqlproj",
+            //Deployment
+            "*.deployproj",
+            //Common Project System Files
+            "*.msbuildproj",
+            //SQL
+            "*.sqlproj",
+            //SQL Project Files
+            "*.dbproj",
+            //RStudio
+            "*.rproj"
+        };
 
         public InspectorDispatch()
         {
         }
-        
+
         public List<InspectionResult> Inspect(InspectionOptions options, NugetSearchService nugetService)
         {
             return CreateInspectors(options, nugetService)?.Select(insp => insp.Inspect()).ToList();
@@ -35,20 +80,21 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 {
                     foreach (var solution in solutionPaths)
                     {
+                        Console.WriteLine("Found Solution {0}", solution);
                         var solutionOp = new SolutionInspectionOptions(options);
                         solutionOp.TargetPath = solution;
                         inspectors.Add(new SolutionInspector(solutionOp, nugetService));
                     }
-                    
+
                 }
                 else
                 {
                     Console.WriteLine("No Solution file found.  Searching for a project file...");
-                    string[] projectPaths = Directory.GetFiles(options.TargetPath, "*.*proj");
+                    string[] projectPaths = SupportedProjectPatterns.SelectMany(pattern => Directory.GetFiles(options.TargetPath, pattern)).Distinct().ToArray();
                     if (projectPaths != null && projectPaths.Length > 0)
                     {
                         foreach (var projectPath in projectPaths)
-                        { 
+                        {
                             Console.WriteLine("Found project {0}", projectPath);
                             var projectOp = new ProjectInspectionOptions(options);
                             projectOp.TargetPath = projectPath;

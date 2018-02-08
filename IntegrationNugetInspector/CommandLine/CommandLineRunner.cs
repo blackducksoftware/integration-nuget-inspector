@@ -157,9 +157,17 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             {
                 foreach (var result in inspectionResults)
                 {
-                    var writer = new InspectionResultJsonWriter(result);
-                    writer.Write();
-                    Console.WriteLine("Info file created at {0}", writer.FilePath());
+                    try
+                    {
+                        var writer = new InspectionResultJsonWriter(result);
+                        writer.Write();
+                        Console.WriteLine("Info file created at {0}", writer.FilePath());
+                    }catch (Exception e)
+                    {
+                        Console.WriteLine("Error creating info file.");
+                        Console.WriteLine(e.Message);
+                        Console.WriteLine(e.StackTrace);
+                    }
                 }
             }
 

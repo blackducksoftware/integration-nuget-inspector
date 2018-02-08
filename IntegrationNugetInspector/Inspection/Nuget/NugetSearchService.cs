@@ -42,25 +42,47 @@ namespace Com.Blackducksoftware.Integration.Nuget
 
         public List<IPackageSearchMetadata> FindPackages(String id)
         {
-            
+            var matchingPackages = new List<IPackageSearchMetadata>();
+            List<Exception> exceptions = new List<Exception>();
+
             foreach (PackageMetadataResource metadataResource in MetadataResourceList)
             {
                 try
                 {
                     var metaResult = metadataResource.GetMetadataAsync(id, includePrerelease: true, includeUnlisted: true, log: new Logger(), token: CancellationToken.None).Result;
-                    var matchingPackages = new List<IPackageSearchMetadata>(metaResult);
                     if (matchingPackages.Count > 0)
                     {
-                        return matchingPackages;
+                        matchingPackages.AddRange(metaResult);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("A meta data resource was unable to load it's packages: " + ex.Message);
+                    exceptions.Add(ex);
                 }
             }
 
-            return null;
+            if (matchingPackages.Count > 0)
+            {
+                return matchingPackages;
+            }
+            else if (exceptions.Count > 0)
+            {
+                Console.WriteLine($"No packages were found for {id}, and an exception occured in one or more meta data resources.");
+                foreach (Exception ex in exceptions)
+                {
+                    Console.WriteLine("A meta data resource was unable to load it's packages: " + ex.Message);
+                    if (ex.InnerException != null)
+                    {
+                        Console.WriteLine("The reason: " + ex.InnerException.Message);
+                    }
+                }
+                return null;
+            }
+            else
+            {
+                Console.WriteLine($"No packages were found for {id} in any meta data resources.");
+                return null;
+            }
         }
        
         private void CreateResourceLists(List<Lazy<INuGetResourceProvider>> providers, string packagesRepoUrl)

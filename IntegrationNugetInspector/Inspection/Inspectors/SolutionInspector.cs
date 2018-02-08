@@ -97,6 +97,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             solution.Type = "Solution";
             try
             {
+                Console.WriteLine("Processing Solution: " + Options.TargetPath);
                 List<ProjectFile> projectFiles = FindProjectFilesFromSolutionFile(Options.TargetPath, ExcludedProjectTypeGUIDs);
                 Console.WriteLine("Parsed Solution File");
                 if (projectFiles.Count > 0)
@@ -105,23 +106,41 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     Console.WriteLine("Solution directory: {0}", solutionDirectory);
                     foreach (ProjectFile project in projectFiles)
                     {
-                        string projectRelativePath = project.Path;
-                        List<string> projectPathSegments = new List<string>();
-                        projectPathSegments.Add(solutionDirectory);
-                        projectPathSegments.Add(projectRelativePath);
-
-                        string projectPath = InspectorUtil.CreatePath(projectPathSegments);
-
-                        ProjectInspector projectInspector = new ProjectInspector(new ProjectInspectionOptions(Options)
+                        try
                         {
-                            ProjectName = project.Name,
-                            TargetPath = projectPath
-                        }, NugetService);
+                            string projectRelativePath = project.Path;
+                            List<string> projectPathSegments = new List<string>();
+                            projectPathSegments.Add(solutionDirectory);
+                            projectPathSegments.Add(projectRelativePath);
 
-                        InspectionResult projectResult =  projectInspector.Inspect();
-                        if (projectResult != null && projectResult.Containers != null)
+                            string projectPath = InspectorUtil.CreatePath(projectPathSegments);
+
+                            ProjectInspector projectInspector = new ProjectInspector(new ProjectInspectionOptions(Options)
+                            {
+                                ProjectName = project.Name,
+                                TargetPath = projectPath
+                            }, NugetService);
+
+                            InspectionResult projectResult = projectInspector.Inspect();
+                            if (projectResult != null && projectResult.Containers != null)
+                            {
+                                solution.Children.AddRange(projectResult.Containers);
+                            }
+                        }
+                        catch (Exception ex)
                         {
-                            solution.Children.AddRange(projectResult.Containers);
+                            continue;
+                            Console.WriteLine(ex.ToString());
+                            if (Options.IgnoreFailure)
+                            {
+
+                                Console.WriteLine("Error inspecting project: {0}", project.Path);
+                                Console.WriteLine("Error inspecting project. Cause: {0}", ex);
+                            }
+                            else
+                            {
+                                throw ex;
+                            }
                         }
                     }
                 }

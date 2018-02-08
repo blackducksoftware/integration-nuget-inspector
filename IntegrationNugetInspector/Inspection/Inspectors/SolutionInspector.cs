@@ -129,7 +129,6 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                         }
                         catch (Exception ex)
                         {
-                            continue;
                             Console.WriteLine(ex.ToString());
                             if (Options.IgnoreFailure)
                             {

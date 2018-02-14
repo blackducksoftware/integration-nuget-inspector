@@ -50,7 +50,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
                 try
                 {
                     var metaResult = metadataResource.GetMetadataAsync(id, includePrerelease: true, includeUnlisted: true, log: new Logger(), token: CancellationToken.None).Result;
-                    if (matchingPackages.Count > 0)
+                    if (metaResult.Count() > 0)
                     {
                         matchingPackages.AddRange(metaResult);
                     }

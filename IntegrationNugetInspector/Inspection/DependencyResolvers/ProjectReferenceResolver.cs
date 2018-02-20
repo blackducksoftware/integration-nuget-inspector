@@ -66,11 +66,23 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
                     tree.Add(dep);
                 }
 
-                return new DependencyResult()
+                var result = new DependencyResult()
                 {
                     Success = true,
-                    Packages = tree.GetPackageList()
+                    Packages = tree.GetPackageList(),
+                    Dependencies = new List<Inspector.Model.PackageId>()
                 };
+
+                foreach (var package in result.Packages)
+                {
+                    var anyPackageReferences = result.Packages.Where(pkg => pkg.Dependencies.Contains(package.PackageId)).Any();
+                    if (!anyPackageReferences)
+                    {
+                        result.Dependencies.Add(package.PackageId);
+                    }
+                }
+
+                return result;
             }
             catch (InvalidProjectFileException e)
             {

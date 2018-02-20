@@ -91,6 +91,15 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
             }
 
             result.Packages = tree.GetPackageList();
+            result.Dependencies = new List<Inspector.Model.PackageId>();
+            foreach (var package in result.Packages)
+            {
+                var anyPackageReferences = result.Packages.Where(pkg => pkg.Dependencies.Contains(package.PackageId)).Any();
+                if (!anyPackageReferences)
+                {
+                    result.Dependencies.Add(package.PackageId);
+                }
+            }
 
             return result;
         }

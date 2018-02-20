@@ -104,6 +104,17 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 {
                     string solutionDirectory = Path.GetDirectoryName(Options.TargetPath);
                     Console.WriteLine("Solution directory: {0}", solutionDirectory);
+
+                    var duplicateNames = projectFiles
+                        .GroupBy(project => project.Name)
+                        .Where(group => group.Count() > 1)
+                        .Select(group => group.Key);
+
+                    var duplicatePaths = projectFiles
+                        .GroupBy(project => project.Path)
+                        .Where(group => group.Count() > 1)
+                        .Select(group => group.Key);
+
                     foreach (ProjectFile project in projectFiles)
                     {
                         try
@@ -114,10 +125,21 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                             projectPathSegments.Add(projectRelativePath);
 
                             string projectPath = InspectorUtil.CreatePath(projectPathSegments);
+                            string projectName = project.Name;
+                            if (duplicateNames.Contains(projectName))
+                            {
+                                Console.WriteLine($"Duplicate project name '{projectName}' found. Using path instead.");
+                                projectName = project.Path;
+                                if (duplicatePaths.Contains(projectName))
+                                {
+                                    Console.WriteLine($"Duplicate project path '{projectName}' found. Using GUID instead.");
+                                    projectName = project.GUID;
+                                }
+                            }
 
                             ProjectInspector projectInspector = new ProjectInspector(new ProjectInspectionOptions(Options)
                             {
-                                ProjectName = project.Name,
+                                ProjectName = projectName,
                                 TargetPath = projectPath
                             }, NugetService);
 

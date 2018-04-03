@@ -128,13 +128,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                             string projectName = project.Name;
                             if (duplicateNames.Contains(projectName))
                             {
-                                Console.WriteLine($"Duplicate project name '{projectName}' found. Using path instead.");
-                                projectName = project.Path;
-                                if (duplicatePaths.Contains(projectName))
-                                {
-                                    Console.WriteLine($"Duplicate project path '{projectName}' found. Using GUID instead.");
-                                    projectName = project.GUID;
-                                }
+                                Console.WriteLine($"Duplicate project name '{projectName}' found. Using GUID instead.");
+                                projectName = project.GUID;
                             }
 
                             ProjectInspector projectInspector = new ProjectInspector(new ProjectInspectionOptions(Options)

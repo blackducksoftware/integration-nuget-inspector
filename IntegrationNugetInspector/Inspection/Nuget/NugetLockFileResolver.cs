@@ -20,7 +20,22 @@ namespace Com.Blackducksoftware.Integration.Nuget
         private NuGet.Versioning.NuGetVersion BestVersion(string name, NuGet.Versioning.VersionRange range, IList<NuGet.ProjectModel.LockFileTargetLibrary> libraries)
         {
             var versions = libraries.Where(lib => lib.Name == name).Select(lib => lib.Version);
-            return range.FindBestMatch(versions);
+            var bestMatch = range.FindBestMatch(versions);
+            if (bestMatch == null)
+            {
+                if (versions.Count() == 1)
+                {
+                    return versions.First();
+                }
+                else
+                {
+                    throw new Exception($"Unable to find a version to satisfy range {range.PrettyPrint()} for the dependency " + name);
+                }
+            }
+            else
+            {
+                return bestMatch;
+            }
         }
 
 

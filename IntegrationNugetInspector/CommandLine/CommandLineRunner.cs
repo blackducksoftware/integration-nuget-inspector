@@ -37,6 +37,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         [CommandLineArg(CommandLineArgKeys.PackagesRepoUrl, "The URL of the NuGet repository to get the packages.")]
         public string PackagesRepoUrl = "https://www.nuget.org/api/v2/";
 
+        [AppConfigArg(AppConfigKeys.NugetConfigPath)]
+        [CommandLineArg(CommandLineArgKeys.NugetConfigPath, "The path of a NuGet config file to load package sources from.")]
+        public string NugetConfigPath = "";
+
         public bool ShowHelp;
         public bool Verbose;
 
@@ -49,6 +53,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             IncludedModules = String.IsNullOrEmpty(overide.IncludedModules) ? this.IncludedModules : overide.IncludedModules;
             IgnoreFailures = String.IsNullOrEmpty(overide.IgnoreFailures) ? this.IgnoreFailures : overide.IgnoreFailures;
             PackagesRepoUrl = String.IsNullOrEmpty(overide.PackagesRepoUrl) ? this.PackagesRepoUrl : overide.PackagesRepoUrl;
+            NugetConfigPath = String.IsNullOrEmpty(overide.NugetConfigPath) ? this.NugetConfigPath : overide.NugetConfigPath;
         }
     }
 
@@ -97,13 +102,13 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
 
             return result;
-        } 
+        }
 
         public RunOptions LoadAppSettings(string path)
         {
 
             RunOptions result = new RunOptions();
-            
+
             ExeConfigurationFileMap configFileMap = new ExeConfigurationFileMap();
             configFileMap.ExeConfigFilename = result.AppSettingsFile;
             Configuration config = ConfigurationManager.OpenMappedExeConfiguration(configFileMap, ConfigurationUserLevel.None);
@@ -114,7 +119,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     var attr = GetAttr<AppConfigArgAttribute>(field);
                     if (attr != null && element.Key == attr.Key)
                     {
-                         field.SetValue(result, element.Value);
+                        field.SetValue(result, element.Value);
                     }
                 }
             }
@@ -146,11 +151,12 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 IgnoreFailure = options.IgnoreFailures == "true",
                 OutputDirectory = options.OutputDirectory,
                 PackagesRepoUrl = options.PackagesRepoUrl,
+                NugetConfigPath = options.NugetConfigPath,
                 TargetPath = options.TargetPath,
                 Verbose = options.Verbose
             };
 
-            var searchService = new NugetSearchService(options.PackagesRepoUrl);
+            var searchService = new NugetSearchService(options.PackagesRepoUrl, options.NugetConfigPath);
             var inspectionResults = Dispatch.Inspect(opts, searchService);
 
             if (inspectionResults != null)
@@ -159,15 +165,34 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 {
                     try
                     {
-                        var writer = new InspectionResultJsonWriter(result);
-                        writer.Write();
-                        Console.WriteLine("Info file created at {0}", writer.FilePath());
-                    }catch (Exception e)
+                        if (result.ResultName != null)
+                        {
+                            Console.WriteLine("Inspection: " + result.ResultName);
+                        }
+                        if (result.Status == InspectionResult.ResultStatus.Success)
+                        {
+                            Console.WriteLine("Inspection Result: Success");
+                            var writer = new InspectionResultJsonWriter(result);
+                            writer.Write();
+                            Console.WriteLine("Info file created at {0}", writer.FilePath());
+                        }
+                        else
+                        {
+                            Console.WriteLine("Inspection Result: Error");
+                            if (result.Exception != null)
+                            {
+                                Console.WriteLine("Exception:");
+                                Console.WriteLine(result.Exception);
+                            }
+                        }
+                    }
+                    catch (Exception e)
                     {
-                        Console.WriteLine("Error creating info file.");
+                        Console.WriteLine("Error processing inspection result.");
                         Console.WriteLine(e.Message);
                         Console.WriteLine(e.StackTrace);
                     }
+
                 }
             }
 
@@ -201,6 +226,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.ExcludedModules, options.ExcludedModules);
             Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.IgnoreFailures, options.IgnoreFailures);
             Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.PackagesRepoUrl, options.PackagesRepoUrl);
+            Console.WriteLine("Property {0} = {1}", CommandLineArgKeys.NugetConfigPath, options.NugetConfigPath);
         }
 
 

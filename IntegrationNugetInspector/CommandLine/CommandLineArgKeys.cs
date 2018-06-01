@@ -11,6 +11,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public const string AppSettingsFile = "app_settings_file";
         public const string TargetPath = AppConfigKeys.TargetPath;
         public const string PackagesRepoUrl = AppConfigKeys.PackagesRepoUrl;
+        public const string NugetConfigPath = AppConfigKeys.NugetConfigPath;
         public const string OutputDirectory = AppConfigKeys.OutputDirectory;
         public const string ExcludedModules = AppConfigKeys.ExcludedModules;
         public const string IncludedModules = AppConfigKeys.IncludedModules;

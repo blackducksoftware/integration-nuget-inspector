@@ -13,6 +13,8 @@ using NuGet.Protocol.Core.Types;
 using NuGet.Protocol.Core.v2;
 using NuGet.Versioning;
 using NuGet.Frameworks;
+using System.IO;
+
 namespace Com.Blackducksoftware.Integration.Nuget
 {
    
@@ -22,12 +24,12 @@ namespace Com.Blackducksoftware.Integration.Nuget
         List<DependencyInfoResource> DependencyInfoResourceList = new List<DependencyInfoResource>();
         private CompatibilityProvider frameworkCompatibilityProvider = new CompatibilityProvider(DefaultFrameworkNameProvider.Instance);
 
-        public NugetSearchService(string packagesRepoUrl)
+        public NugetSearchService(string packagesRepoUrl, string nugetConfig)
         {
             List<Lazy<INuGetResourceProvider>> providers = new List<Lazy<INuGetResourceProvider>>();
             providers.AddRange(Repository.Provider.GetCoreV3());  // Add v3 API support
             providers.AddRange(Repository.Provider.GetCoreV2());  // Add v2 API support
-            CreateResourceLists(providers, packagesRepoUrl);
+            CreateResourceLists(providers, packagesRepoUrl, nugetConfig);
         }
 
         public IPackageSearchMetadata FindBestPackage(String id, VersionRange versionRange)
@@ -85,8 +87,35 @@ namespace Com.Blackducksoftware.Integration.Nuget
             }
         }
        
-        private void CreateResourceLists(List<Lazy<INuGetResourceProvider>> providers, string packagesRepoUrl)
+        private void CreateResourceLists(List<Lazy<INuGetResourceProvider>> providers, string packagesRepoUrl, string nugetConfig)
         {
+            if (!String.IsNullOrWhiteSpace(nugetConfig))
+            {
+                if (File.Exists(nugetConfig))
+                {
+                    string parent = Directory.GetParent(nugetConfig).FullName;
+                    string nugetFile = Path.GetFileName(nugetConfig);
+
+                    Console.WriteLine($"Loading nuget config {nugetFile} at {parent}.");
+                    var setting = Settings.LoadSpecificSettings(parent, nugetFile);
+
+                    //https://stackoverflow.com/questions/49789283/read-nuget-config-programmatically-in-c-sharp
+                    var packageSourceProvider = new PackageSourceProvider(setting);
+                    var sources = packageSourceProvider.LoadPackageSources();
+                    Console.WriteLine($"Loaded {sources.Count()} package sources from nuget config.");
+                    foreach (var source in sources)
+                    {
+                        Console.WriteLine($"Found package source: {source.Source}");
+                        AddPackageSource(providers, source);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Nuget config path did not exist.");
+                }
+            }
+            
+
             string[] splitRepoUrls = packagesRepoUrl.Split(new char[] { ',' });
             foreach (string repoUrl in splitRepoUrls)
             {
@@ -94,35 +123,41 @@ namespace Com.Blackducksoftware.Integration.Nuget
                 if (!String.IsNullOrWhiteSpace(url))
                 {
                     PackageSource packageSource = new PackageSource(url);
-                    SourceRepository sourceRepository = new SourceRepository(packageSource, providers);
-                    try
-                    {
-                        PackageMetadataResource packageMetadataResource = sourceRepository.GetResource<PackageMetadataResource>();
-                        MetadataResourceList.Add(packageMetadataResource);
-                    }catch (Exception e)
-                    {
-                        Console.WriteLine("Error loading NuGet Package Meta Data Resource resoure for url: " + url);
-                        if (e.InnerException != null)
-                        {
-                            Console.WriteLine(e.InnerException.Message);
-                        }
-                    }
-                    try
-                    {
-                        DependencyInfoResource dependencyInfoResource = sourceRepository.GetResource<DependencyInfoResource>();
-                        DependencyInfoResourceList.Add(dependencyInfoResource);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Error loading NuGet Dependency Resource resoure for url: " + url);
-                        if (e.InnerException != null)
-                        {
-                            Console.WriteLine(e.InnerException.Message);
-                        }
-                    }
+                    AddPackageSource(providers, packageSource);
                 }
             }
 
+        }
+
+        private void AddPackageSource(List<Lazy<INuGetResourceProvider>> providers, PackageSource packageSource)
+        {
+            SourceRepository sourceRepository = new SourceRepository(packageSource, providers);
+            try
+            {
+                PackageMetadataResource packageMetadataResource = sourceRepository.GetResource<PackageMetadataResource>();
+                MetadataResourceList.Add(packageMetadataResource);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error loading NuGet Package Meta Data Resource resoure for url: " + packageSource.SourceUri);
+                if (e.InnerException != null)
+                {
+                    Console.WriteLine(e.InnerException.Message);
+                }
+            }
+            try
+            {
+                DependencyInfoResource dependencyInfoResource = sourceRepository.GetResource<DependencyInfoResource>();
+                DependencyInfoResourceList.Add(dependencyInfoResource);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error loading NuGet Dependency Resource resoure for url: " + packageSource.SourceUri);
+                if (e.InnerException != null)
+                {
+                    Console.WriteLine(e.InnerException.Message);
+                }
+            }
         }
 
         public IEnumerable<PackageDependency> DependenciesForPackage(PackageIdentity identity, NuGet.Frameworks.NuGetFramework framework)

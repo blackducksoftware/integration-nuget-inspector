@@ -67,22 +67,11 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             catch (Exception ex)
             {
                 Console.WriteLine("{0}", ex.ToString());
-                if (Options.IgnoreFailure)
+                return new InspectionResult()
                 {
-                    Console.WriteLine("Error executing Build BOM task on project {0}, cause: {1}", Options.SolutionName, ex);
-                    return new InspectionResult()
-                    {
-                        Status = InspectionResult.ResultStatus.Success
-                    };
-                }
-                else
-                {
-                    return new InspectionResult()
-                    {
-                        Status = InspectionResult.ResultStatus.Error,
-                        Exception = ex
-                    };
-                }
+                    Status = InspectionResult.ResultStatus.Error,
+                    Exception = ex
+                };
             }
             
         }

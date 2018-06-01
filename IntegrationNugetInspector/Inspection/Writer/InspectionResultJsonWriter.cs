@@ -39,8 +39,17 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public void Write(string outputDirectory, string outputFilePath)
         {
             
-            Directory.CreateDirectory(outputDirectory);
+            if (outputDirectory == null)
+            {
+                Console.WriteLine("Could not create output directory: " + outputDirectory);
+            }
+            else
+            {
+                Console.WriteLine("Creating output directory: " + outputDirectory);
+                Directory.CreateDirectory(outputDirectory);
+            }
 
+            Console.WriteLine("Creating output file path: " + outputFilePath);
             using (var fs = new FileStream(outputFilePath, FileMode.Create))
             {
                 using (var sw = new StreamWriter(fs))

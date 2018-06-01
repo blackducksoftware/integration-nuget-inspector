@@ -142,6 +142,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             else
             {
                 Console.WriteLine("Processing Project: {0}", Options.ProjectName);
+                if (Options.ProjectDirectory != null)
+                {
+                    Console.WriteLine("Using Project Directory: {0}", Options.ProjectDirectory);
+                }
                 Model.Container projectNode = new Model.Container();
                 projectNode.Name = Options.ProjectName;
                 projectNode.Version = Options.VersionName;
@@ -157,6 +161,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
                 if (packagesConfigExists)
                 {
+                    Console.WriteLine("Using packages config: " + Options.PackagesConfigPath);
                     var packagesConfigResolver = new PackagesConfigResolver(Options.PackagesConfigPath, NugetService);
                     var packagesConfigResult = packagesConfigResolver.Process();
                     projectNode.Packages = packagesConfigResult.Packages;
@@ -164,6 +169,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 }
                 else if (projectJsonLockExists)
                 {
+                    Console.WriteLine("Using json lock: " + Options.ProjectJsonLockPath);
                     var projectJsonLockResolver = new ProjectLockJsonResolver(Options.ProjectJsonLockPath);
                     var projectJsonLockResult = projectJsonLockResolver.Process();
                     projectNode.Packages = projectJsonLockResult.Packages;
@@ -171,6 +177,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 }
                 else if (projectAssetsJsonExists)
                 {
+                    Console.WriteLine("Using assets json file: " + Options.ProjectAssetsJsonPath);
                     var projectAssetsJsonResolver = new ProjectAssetsJsonResolver(Options.ProjectAssetsJsonPath);
                     var projectAssetsJsonResult = projectAssetsJsonResolver.Process();
                     projectNode.Packages = projectAssetsJsonResult.Packages;
@@ -178,6 +185,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 }
                 else if (projectJsonExists)
                 {
+                    Console.WriteLine("Using project json: " + Options.ProjectJsonPath);
                     var projectJsonResolver = new ProjectJsonResolver(Options.ProjectName, Options.ProjectJsonPath);
                     var projectJsonResult = projectJsonResolver.Process();
                     projectNode.Packages = projectJsonResult.Packages;
@@ -185,15 +193,18 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 }
                 else
                 {
+                    Console.WriteLine("Attempting reference resolver: " + Options.TargetPath);
                     var referenceResolver = new ProjectReferenceResolver(Options.TargetPath, NugetService);
                     var projectReferencesResult = referenceResolver.Process();
                     if (projectReferencesResult.Success)
                     {
+                        Console.WriteLine("Reference resolver succeeded.");
                         projectNode.Packages = projectReferencesResult.Packages;
                         projectNode.Dependencies = projectReferencesResult.Dependencies;
                     }
                     else
                     {
+                        Console.WriteLine("Using backup XML resolver.");
                         var xmlResolver = new ProjectXmlResolver(Options.TargetPath, NugetService);
                         var xmlResult = xmlResolver.Process();
                         projectNode.Version = xmlResult.ProjectVersion;
@@ -213,6 +224,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
             try
             {
+                Console.WriteLine("Attempting to parse configuration output paths.");
                 Project proj = new Project(Options.TargetPath);
                 List<string> outputPaths = new List<string>();
                 List<string> configurations;
@@ -225,8 +237,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     var path = proj.GetPropertyValue("OutputPath");
                     var fullPath = Path.GetFullPath(Path.Combine(proj.DirectoryPath, path));
                     outputPaths.Add(fullPath);
+                    Console.WriteLine("Found path: " + fullPath);
                 }
                 ProjectCollection.GlobalProjectCollection.UnloadProject(proj);
+                Console.WriteLine($"Found {outputPaths.Count} paths.");
                 return outputPaths;
             }
             catch (Exception e)

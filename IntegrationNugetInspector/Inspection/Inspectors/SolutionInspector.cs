@@ -21,6 +21,7 @@
  *******************************************************************************/
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Com.Blackducksoftware.Integration.Nuget;
@@ -80,13 +81,15 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
         public Model.Container GetContainer()
         {
+            Console.WriteLine("Processing Solution: " + Options.TargetPath);
+            var stopwatch = Stopwatch.StartNew();
             Model.Container solution = new Model.Container();
             solution.Name = Options.SolutionName;
             solution.SourcePath = Options.TargetPath;
             solution.Type = "Solution";
             try
             {
-                Console.WriteLine("Processing Solution: " + Options.TargetPath);
+                
                 List<ProjectFile> projectFiles = FindProjectFilesFromSolutionFile(Options.TargetPath, ExcludedProjectTypeGUIDs);
                 Console.WriteLine("Parsed Solution File");
                 if (projectFiles.Count > 0)
@@ -167,7 +170,13 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     throw ex;
                 }
             }
-            
+
+            if (solution != null && solution.Children != null)
+            {
+                Console.WriteLine("Found " + solution.Children.Count + " children.");
+            }
+            Console.WriteLine("Finished processing solution: " + Options.TargetPath);
+            Console.WriteLine("Took " + stopwatch.ElapsedMilliseconds + " ms to process.");
             return solution;
         }
 

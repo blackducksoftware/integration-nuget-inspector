@@ -14,6 +14,7 @@ using NuGet.Protocol.Core.v2;
 using NuGet.Versioning;
 using NuGet.Frameworks;
 using System.IO;
+using System.Diagnostics;
 
 namespace Com.Blackducksoftware.Integration.Nuget
 {
@@ -51,7 +52,9 @@ namespace Com.Blackducksoftware.Integration.Nuget
             {
                 try
                 {
+                    var stopWatch = Stopwatch.StartNew();
                     var metaResult = metadataResource.GetMetadataAsync(id, includePrerelease: true, includeUnlisted: true, log: new Logger(), token: CancellationToken.None).Result;
+                    Console.WriteLine("Took " + stopWatch.ElapsedMilliseconds + " ms to communicate with metadata resource about '" + id + "'");
                     if (metaResult.Count() > 0)
                     {
                         matchingPackages.AddRange(metaResult);
@@ -149,6 +152,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
             {
                 DependencyInfoResource dependencyInfoResource = sourceRepository.GetResource<DependencyInfoResource>();
                 DependencyInfoResourceList.Add(dependencyInfoResource);
+                Console.WriteLine("Succesfully added dependency info resource: " + sourceRepository.PackageSource.SourceUri);
             }
             catch (Exception e)
             {

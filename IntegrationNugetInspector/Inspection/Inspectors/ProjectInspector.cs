@@ -35,6 +35,7 @@ using System.Threading;
 using System.Xml;
 using Com.Blackducksoftware.Integration.Nuget.DependencyResolvers;
 using Com.Blackducksoftware.Integration.Nuget;
+using System.Diagnostics;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
@@ -141,6 +142,8 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
             else
             {
+
+                var stopWatch = Stopwatch.StartNew();
                 Console.WriteLine("Processing Project: {0}", Options.ProjectName);
                 if (Options.ProjectDirectory != null)
                 {
@@ -213,7 +216,12 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     }
                 }
 
-                Console.WriteLine("Finished processing project {0}", Options.ProjectName);
+                if (projectNode != null && projectNode.Dependencies != null && projectNode.Packages != null)
+                {
+                    Console.WriteLine("Found {0} dependencies among {1} packages.", projectNode.Dependencies.Count, projectNode.Packages.Count);
+                }
+                Console.WriteLine("Finished processing project {0} which took {1} ms.", Options.ProjectName, stopWatch.ElapsedMilliseconds);
+                
                 return projectNode;
             }
         }

@@ -36,6 +36,7 @@ using System.Xml;
 using Com.Blackducksoftware.Integration.Nuget.DependencyResolvers;
 using Com.Blackducksoftware.Integration.Nuget;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
@@ -261,30 +262,65 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
         public bool IsExcluded()
         {
-
             if (String.IsNullOrWhiteSpace(Options.IncludedModules) && String.IsNullOrWhiteSpace(Options.ExcludedModules))
             {
                 return false;
-            }
-            else if(!String.IsNullOrWhiteSpace(Options.IncludedModules))
+            };
+
+            String projectName = Options.ProjectName.Trim();
+            if (!String.IsNullOrWhiteSpace(Options.IncludedModules))
             {
                 ISet<string> includedSet = new HashSet<string>();
-                string[] projectNameArray = Options.IncludedModules.Split(new char[] { ',' });
-                foreach (string projectName in projectNameArray)
+                string[] projectPatternArray = Options.IncludedModules.Split(new char[] { ',' });
+                foreach (string projectPattern in projectPatternArray)
                 {
-                    includedSet.Add(projectName.Trim());
+                    if (projectPattern.Trim() == projectName) // legacy behaviour, match if equals with trim.
+                    {
+                        return false;
+                    }
+                    try
+                    {
+                        Match patternMatch = Regex.Match(projectName, projectPattern, RegexOptions.None, TimeSpan.FromMinutes(1));
+                        if (patternMatch.Success)
+                        {
+                            return false;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Unable to parse " + projectPattern + " as a regular expression, so pattern matching module names could not occur.");
+                        Console.WriteLine("It is still compared to the project name. To use it as a pattern please fix the following issue:");
+                        Console.WriteLine(e);
+                    }
                 }
-                return !includedSet.Contains(Options.ProjectName.Trim());
+                return true;//did not match any inclusion, exclude it.
             }
-            else //ExcludedModules
+            else
             {
                 ISet<string> excludedSet = new HashSet<string>();
-                string[] projectNameArray = Options.ExcludedModules.Split(new char[] { ',' });
-                foreach (string projectName in projectNameArray)
+                string[] projectPatternArray = Options.ExcludedModules.Split(new char[] { ',' });
+                foreach (string projectPattern in projectPatternArray)
                 {
-                    excludedSet.Add(projectName.Trim());
-                }
-                return excludedSet.Contains(Options.ProjectName.Trim());
+                    if (projectPattern.Trim() == projectName) // legacy behaviour, match if equals with trim.
+                    {
+                        return true;
+                    }
+                    try
+                    {
+                        Match patternMatch = Regex.Match(projectName, projectPattern, RegexOptions.None, TimeSpan.FromMinutes(1));
+                        if (patternMatch.Success)
+                        {
+                            return true;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Unable to parse " + projectPattern + " as a regular expression, so pattern matching module names could not occur.");
+                        Console.WriteLine("It is still compared to the project name. To use it as a pattern please fix the following issue:");
+                        Console.WriteLine(e);
+                    }
+            }
+                return false;//did not match exclusion, include it.
             }
         }
 

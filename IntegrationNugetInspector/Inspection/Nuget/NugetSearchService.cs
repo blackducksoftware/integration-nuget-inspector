@@ -24,6 +24,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
         List<PackageMetadataResource> MetadataResourceList = new List<PackageMetadataResource>();
         List<DependencyInfoResource> DependencyInfoResourceList = new List<DependencyInfoResource>();
         private CompatibilityProvider frameworkCompatibilityProvider = new CompatibilityProvider(DefaultFrameworkNameProvider.Instance);
+        private Dictionary<String, List<IPackageSearchMetadata>> lookupCache = new Dictionary<string, List<IPackageSearchMetadata>>();
 
         public NugetSearchService(string packagesRepoUrl, string nugetConfig)
         {
@@ -44,6 +45,21 @@ namespace Com.Blackducksoftware.Integration.Nuget
         }
 
         public List<IPackageSearchMetadata> FindPackages(String id)
+        {
+            if (lookupCache.ContainsKey(id))
+            {
+                Console.WriteLine("Already looked up package '" + id + "', using the cache.");
+            }
+            else
+            {
+                Console.WriteLine("Have not looked up package '" + id + "', using metadata resources.");
+                lookupCache[id] = FindPackagesOnline(id);
+            }
+
+            return lookupCache[id];
+        }
+
+        private List<IPackageSearchMetadata> FindPackagesOnline(String id)
         {
             var matchingPackages = new List<IPackageSearchMetadata>();
             List<Exception> exceptions = new List<Exception>();

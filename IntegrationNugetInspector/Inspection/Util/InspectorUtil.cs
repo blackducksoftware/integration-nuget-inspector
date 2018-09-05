@@ -33,39 +33,47 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
         public static string GetProjectAssemblyVersion(string projectDirectory)
         {
             string version = null;
-            List<string> pathSegments = new List<string>();
-            pathSegments.Add(projectDirectory);
-            string[] assemblyInfoPaths = Directory.GetFiles(projectDirectory, "*AssemblyInfo.*", SearchOption.AllDirectories);
-            foreach (string path in assemblyInfoPaths)
+            try
             {
-                Console.WriteLine("Assembly path {0}", path);
-                if (File.Exists(path))
+                List<string> pathSegments = new List<string>();
+                pathSegments.Add(projectDirectory);
+                string[] assemblyInfoPaths = Directory.GetFiles(projectDirectory, "*AssemblyInfo.*", SearchOption.AllDirectories);
+                foreach (string path in assemblyInfoPaths)
                 {
-                    List<string> contents = new List<string>(File.ReadAllLines(path));
-                    List<string> versionText = contents.FindAll(text => text.Contains("AssemblyFileVersion"));
-                    if (versionText == null || versionText.Count == 0)
+                    Console.WriteLine("Assembly path {0}", path);
+                    if (File.Exists(path))
                     {
-                        versionText = contents.FindAll(text => text.Contains("AssemblyVersion"));
-                    }
-                    if (versionText != null)
-                    {
-                        foreach (string text in versionText)
+                        List<string> contents = new List<string>(File.ReadAllLines(path));
+                        List<string> versionText = contents.FindAll(text => text.Contains("AssemblyFileVersion"));
+                        if (versionText == null || versionText.Count == 0)
                         {
-                            String versionLine = text.Trim();
-                            if (!versionLine.StartsWith("//"))
+                            versionText = contents.FindAll(text => text.Contains("AssemblyVersion"));
+                        }
+                        if (versionText != null)
+                        {
+                            foreach (string text in versionText)
                             {
-                                int firstParen = versionLine.IndexOf("(");
-                                int lastParen = versionLine.LastIndexOf(")");
-                                // exclude the '(' and the " characters
-                                int start = firstParen + 2;
-                                // exclude the ')' and the " characters
-                                int end = lastParen - 1;
-                                version = versionLine.Substring(start, (end - start));
-                                break;
+                                String versionLine = text.Trim();
+                                if (!versionLine.StartsWith("//"))
+                                {
+                                    int firstParen = versionLine.IndexOf("(");
+                                    int lastParen = versionLine.LastIndexOf(")");
+                                    // exclude the '(' and the " characters
+                                    int start = firstParen + 2;
+                                    // exclude the ')' and the " characters
+                                    int end = lastParen - 1;
+                                    version = versionLine.Substring(start, (end - start));
+                                    break;
+                                }
                             }
                         }
                     }
                 }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Unable to find version for project directory: " + projectDirectory);
+                Console.WriteLine("The issue was: " + e.Message);
             }
 
             return version;

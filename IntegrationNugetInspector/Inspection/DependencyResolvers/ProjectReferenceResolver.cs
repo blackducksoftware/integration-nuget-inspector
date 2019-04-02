@@ -31,7 +31,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
                 List<NugetDependency> deps = new List<NugetDependency>();
                 foreach (ProjectItem reference in proj.GetItemsIgnoringCondition("Reference"))
                 {
-                    if (reference.Xml != null && !String.IsNullOrWhiteSpace(reference.Xml.Include) && reference.Xml.Include.Contains("Version"))
+                    if (reference.Xml != null && !String.IsNullOrWhiteSpace(reference.Xml.Include) && reference.Xml.Include.Contains("Version="))
                     {
 
                         string packageInfo = reference.Xml.Include;

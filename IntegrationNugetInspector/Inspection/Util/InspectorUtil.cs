@@ -39,10 +39,18 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 pathSegments.Add(projectDirectory);
                 string[] assemblyInfoPaths = Directory.GetFiles(projectDirectory, "*AssemblyInfo.*", SearchOption.AllDirectories);
                 foreach (string path in assemblyInfoPaths)
-                {
-                    Console.WriteLine("Assembly path {0}", path);
+                {                   
+                    if (path.EndsWith(".obj"))
+                    {
+                        Console.WriteLine("Will not use obj assembly path: {0}", path);
+                        continue;
+                    } else
+                    {
+                        Console.WriteLine("Looking for version in assembly path {0}", path);
+                    }
                     if (File.Exists(path))
                     {
+                        
                         List<string> contents = new List<string>(File.ReadAllLines(path));
                         List<string> versionText = contents.FindAll(text => text.Contains("AssemblyFileVersion"));
                         if (versionText == null || versionText.Count == 0)
@@ -67,6 +75,10 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                                 }
                             }
                         }
+                    }
+                    if (version != null)
+                    {
+                        break;
                     }
                 }
             }

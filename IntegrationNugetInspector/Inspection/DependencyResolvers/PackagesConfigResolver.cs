@@ -61,7 +61,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
             foreach (var packageRef in packages)
             {
                 string componentName = packageRef.Id;
-                var version = new NuGet.Versioning.NuGetVersion(packageRef.Version.Version);
+                var version = new NuGet.Versioning.NuGetVersion(packageRef.Version.Version, packageRef.Version.SpecialVersion, packageRef.Version.Metadata);
                 var versionRange = new NuGet.Versioning.VersionRange(version, true, version, true);
                 var framework = NuGet.Frameworks.NuGetFramework.Parse(packageRef.TargetFramework.FullName);
                 

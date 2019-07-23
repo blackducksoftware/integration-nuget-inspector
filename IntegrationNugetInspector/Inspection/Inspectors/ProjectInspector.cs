@@ -254,8 +254,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             }
             catch (Exception e)
             {
-                Console.WriteLine("Unable to load configuration output paths for project {0}, using project directory instead '{1}'", Options.ProjectName, Options.ProjectDirectory);
-                Console.WriteLine("Nuget configuration message: '{0}'", e.Message);
+                Console.WriteLine("Skipping configuration output paths.");
                 return new List<string>() {};
             }
         }

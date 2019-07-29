@@ -63,7 +63,19 @@ namespace Com.Blackducksoftware.Integration.Nuget.DependencyResolvers
                 string componentName = packageRef.Id;
                 var version = new NuGet.Versioning.NuGetVersion(packageRef.Version.Version, packageRef.Version.SpecialVersion, packageRef.Version.Metadata);
                 var versionRange = new NuGet.Versioning.VersionRange(version, true, version, true);
-                var framework = NuGet.Frameworks.NuGetFramework.Parse(packageRef.TargetFramework.FullName);
+                NuGet.Frameworks.NuGetFramework framework = null;
+                if (packageRef.TargetFramework != null)
+                {
+                    try
+                    {
+                        framework = NuGet.Frameworks.NuGetFramework.Parse(packageRef.TargetFramework.FullName);
+                    } catch (Exception e)
+                    {
+                        Console.WriteLine("Unable to parse framework: " + packageRef.TargetFramework.FullName);
+                    }
+                    
+                }
+                
                 
                 var dep = new NugetDependency(componentName, versionRange, framework);
                 dependencies.Add(dep);

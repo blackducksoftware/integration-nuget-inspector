@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
@@ -195,6 +196,24 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
                 }
             }
+            if (inspectionResults.Where(result => result.Status == InspectionResult.ResultStatus.Error).Any())
+            {
+                inspectionResults.Where(result => result.Status == InspectionResult.ResultStatus.Error)
+                    .Select(result => {
+                        if (result.Exception != null) return result.Exception.ToString(); else return result.ResultName + " encountered an unknown issue.";
+                    }).ToList().ForEach(Console.Error.Write);
+
+                Console.Error.Write("One or more inspection results failed.");
+                if (options.IgnoreFailures == "true")
+                {
+                    Console.Error.Write("Ignoring failures, not exiting -1.");
+                } else
+                {
+                    Environment.Exit(-1);
+                }
+                
+            }
+
 
             return inspectionResults;
         }

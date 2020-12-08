@@ -187,6 +187,7 @@
     <Compile Include="CommandLine\AppConfigArgKeys.cs" />
     <Compile Include="CommandLine\CommandLineArgAttribute.cs" />
     <Compile Include="CommandLine\CommandLineArgKeys.cs" />
+    <Compile Include="Inspection\Util\AssemblyInfoVersionParser.cs" />
     <Compile Include="Model\Inspection.cs" />
     <Compile Include="Inspection\DependencyResolvers\DependencyResolver.cs" />
     <Compile Include="Inspection\DependencyResolvers\DependencyResult.cs" />

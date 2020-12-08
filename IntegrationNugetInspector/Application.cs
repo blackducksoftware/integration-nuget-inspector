@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration;
 using System.IO;
+using System.Linq;
 
 namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 {
@@ -37,8 +38,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
             {
                 var dispatch = new InspectorDispatch();
                 var runner = new CommandLineRunner(dispatch);
-                runner.Execute(args);
-
+                var results = runner.Execute(args);
              }
             catch (Exception ex)
             {

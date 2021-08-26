@@ -203,7 +203,8 @@ namespace Com.Blackducksoftware.Integration.Nuget
         private NuGet.Versioning.VersionRange MinVersionOrFloat(String versionValueRaw, bool includeMin)
         {
             //could be Floating or MinVersion
-            if (NuGet.Versioning.NuGetVersion.TryParse(versionValueRaw, out NuGet.Versioning.NuGetVersion minVersion))
+            NuGet.Versioning.NuGetVersion minVersion;
+            if (NuGet.Versioning.NuGetVersion.TryParse(versionValueRaw, out minVersion))
             {
                 return new NuGet.Versioning.VersionRange(minVersion, includeMin);
             }

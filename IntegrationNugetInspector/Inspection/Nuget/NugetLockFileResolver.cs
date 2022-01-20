@@ -187,7 +187,7 @@ namespace Com.Blackducksoftware.Integration.Nuget
         {
             if (input.Contains(tokens))
             {
-                String[] pieces = input.Split(tokens);
+                String[] pieces =  input.Split(new[] { tokens }, StringSplitOptions.None);
                 projectName = pieces[0].Trim();
                 projectVersion = pieces[1].Trim();
                 return true;

@@ -118,10 +118,11 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
 
                             string projectPath = InspectorUtil.CreatePath(projectPathSegments);
                             string projectName = project.Name;
-                            if (duplicateNames.Contains(projectName))
+                            string projectId = projectName;
+                            if (duplicateNames.Contains(projectId))
                             {
                                 Console.WriteLine($"Duplicate project name '{projectName}' found. Using GUID instead.");
-                                projectName = project.GUID;
+                                projectId = project.GUID;
                             }
 
                             Boolean projectFileExists = false;
@@ -145,6 +146,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                             ProjectInspector projectInspector = new ProjectInspector(new ProjectInspectionOptions(Options)
                             {
                                 ProjectName = projectName,
+                                ProjectUniqueId = projectId,
                                 TargetPath = projectPath
                             }, NugetService);
 

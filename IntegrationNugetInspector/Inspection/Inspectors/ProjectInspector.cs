@@ -84,6 +84,11 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 Options.ProjectName = Path.GetFileNameWithoutExtension(Options.TargetPath);
             }
 
+            if (String.IsNullOrWhiteSpace(Options.ProjectUniqueId))
+            {
+                Options.ProjectUniqueId = Path.GetFileNameWithoutExtension(Options.TargetPath);
+            }
+
             if (String.IsNullOrWhiteSpace(Options.VersionName))
             {
                 Options.VersionName = InspectorUtil.GetProjectAssemblyVersion(Options.ProjectDirectory);
@@ -104,7 +109,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                 return new InspectionResult()
                 {
                     Status = InspectionResult.ResultStatus.Success,
-                    ResultName = Options.ProjectName,
+                    ResultName = Options.ProjectUniqueId,
                     OutputDirectory = Options.OutputDirectory,
                     Containers = containers
                 };
@@ -118,7 +123,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     return new InspectionResult()
                     {
                         Status = InspectionResult.ResultStatus.Success,
-                        ResultName = Options.ProjectName,
+                        ResultName = Options.ProjectUniqueId,
                         OutputDirectory = Options.OutputDirectory
                     };
                 }
@@ -151,7 +156,7 @@ namespace Com.Blackducksoftware.Integration.Nuget.Inspector
                     Console.WriteLine("Using Project Directory: {0}", Options.ProjectDirectory);
                 }
                 Model.Container projectNode = new Model.Container();
-                projectNode.Name = Options.ProjectName;
+                projectNode.Name = Options.ProjectUniqueId;
                 projectNode.Version = Options.VersionName;
                 projectNode.SourcePath = Options.TargetPath;
                 projectNode.Type = "Project";
